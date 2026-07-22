@@ -1,0 +1,7 @@
+{
+  "name": "reservestack",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}

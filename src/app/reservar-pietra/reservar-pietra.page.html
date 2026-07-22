@@ -1,0 +1,96 @@
+<ion-content class="fondo-pantalla">
+  <div class="contenedor-centrado">
+    <div class="form-container">
+      <!-- Logo -->
+      <div class="logo-container">
+        <img src="assets/imgpietra.png" class="logo-img" alt="Pietra Cucina" />
+      </div>
+      
+      <!-- Cuerpo del formulario -->
+      <div class="form-body">
+        <h3>Nueva Reserva</h3>
+        
+        <!-- Fila Fecha y Hora -->
+        <div class="row-inputs">
+          <div class="column-input">
+            <label class="label-texto">Fecha de visita</label>
+            <div class="input-wrapper">
+              <ion-icon name="calendar-outline" class="icono-input"></ion-icon>
+              <!-- Bloquea automáticamente días del pasado -->
+              <ion-input type="date" [min]="todayDate" class="input-limpio" [(ngModel)]="fecha"></ion-input>
+            </div>
+          </div>
+          <div class="column-input">
+            <label class="label-texto">Hora</label>
+            <div class="input-wrapper">
+              <ion-icon name="time-outline" class="icono-input"></ion-icon>
+              <ion-input type="time" class="input-limpio" [(ngModel)]="hora"></ion-input>
+            </div>
+          </div>
+        </div>
+
+        <!-- Número de Personas (Máximo 50 comensales) -->
+        <label class="label-texto">Número de Personas</label>
+        <div class="input-wrapper">
+          <ion-icon name="people-outline" class="icono-input"></ion-icon>
+          <ion-input type="number" min="1" max="50" placeholder="Ej. 4 personas" class="input-limpio" [(ngModel)]="personas"></ion-input>
+        </div>
+        
+        <!-- Área de Preferencia -->
+        <label class="label-texto">Zona de preferencia</label>
+        <div class="input-wrapper">
+          <ion-icon name="restaurant-outline" class="icono-input"></ion-icon>
+          <ion-select placeholder="Selecciona el área..." class="input-limpio" [(ngModel)]="zona" interface="popover">
+            <ion-select-option *ngFor="let z of zonasDisponibles" [value]="z">{{ z.toUpperCase() }}</ion-select-option>
+          </ion-select>
+        </div>
+
+        <hr class="divider" />
+
+        <!-- Fila Nombre y Apellido -->
+        <div class="row-inputs">
+          <div class="column-input">
+            <label class="label-texto">Nombre</label>
+            <div class="input-wrapper">
+              <ion-icon name="person-outline" class="icono-input"></ion-icon>
+              <ion-input type="text" placeholder="Ej. Juan" class="input-limpio" [(ngModel)]="nombre"></ion-input>
+            </div>
+          </div>
+          <div class="column-input">
+            <label class="label-texto">Apellido</label>
+            <div class="input-wrapper">
+              <ion-icon name="person-outline" class="icono-input"></ion-icon>
+              <ion-input type="text" placeholder="Ej. Pérez" class="input-limpio" [(ngModel)]="apellido"></ion-input>
+            </div>
+          </div>
+        </div>
+
+        <!-- Teléfono (Limpia letras en tiempo real a nivel de pantalla) -->
+        <label class="label-texto">Número de Teléfono</label>
+        <div class="input-wrapper">
+          <ion-icon name="call-outline" class="icono-input"></ion-icon>
+          <ion-input type="tel" placeholder="Ej. 5512345678" class="input-limpio" [(ngModel)]="telefono" (ionInput)="limpiarTelefono($event)"></ion-input>
+        </div>
+
+        <!-- Email -->
+        <label class="label-texto">Correo Electrónico</label>
+        <div class="input-wrapper">
+          <ion-icon name="mail-outline" class="icono-input"></ion-icon>
+          <ion-input type="email" placeholder="Ej. juan@correo.com" class="input-limpio" [(ngModel)]="email"></ion-input>
+        </div>
+
+        <!-- Notas Especiales -->
+        <label class="label-texto">Notas Especiales</label>
+        <div class="input-wrapper textarea-wrapper">
+          <ion-icon name="document-text-outline" class="icono-input"></ion-icon>
+          <ion-textarea placeholder="Ej. Alergia al gluten, silla para bebé, etc." class="input-limpio" [(ngModel)]="nota"></ion-textarea>
+        </div>
+      </div>
+      
+      <!-- Botón de Confirmación -->
+      <div class="form-footer">
+        <ion-button expand="block" class="btn-guardar" (click)="confirmarReservacion()">CONFIRMAR RESERVACIÓN</ion-button>
+      </div>
+    </div>
+  </div>
+</ion-content>

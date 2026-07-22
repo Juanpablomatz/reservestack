@@ -1,0 +1,199 @@
+/* Forzamos el fondo del ion-content usando la variable nativa de Ionic */
+ion-content.fondo-pantalla {
+  --background: #0a0f14; /* Azul Niebla oscuro profundo */
+  background: #0a0f14;
+}
+
+/* Flexbox para centrar en medio de la pantalla */
+.contenedor-centrado {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* La tarjeta flotante compacta */
+.form-container {
+  background-color: #131b24; /* Azul Niebla profundo */
+  width: 100%;
+  max-width: 420px;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  border: 1px solid #243141;
+  border-top: 5px solid #d4af37; /* Acento Dorado */
+  padding: 22px;
+  margin: auto;
+  animation: slideUpFade 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.logo-container {
+  text-align: center;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #243141;
+  padding-bottom: 12px;
+
+  .logo-img {
+    max-width: 140px;
+    height: auto;
+    border-radius: 4px;
+  }
+}
+
+.form-body {
+  h3 {
+    color: #d4af37; /* Dorado */
+    font-size: 14px;
+    text-transform: uppercase;
+    margin-top: 0;
+    margin-bottom: 15px;
+    letter-spacing: 2px;
+    text-align: center;
+    font-weight: 600;
+  }
+}
+
+/* Filas para agrupar campos lado a lado */
+.row-inputs {
+  display: flex;
+  gap: 12px;
+  
+  .column-input {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* Etiquetas externas pequeñas y sofisticadas */
+.label-texto {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #768f9e; /* Azul Niebla */
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* --- CONTENEDOR WRAPPER (Más delgado y compacto) --- */
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  background-color: #1a2430;
+  border: 1px solid #243141;
+  border-radius: 6px;
+  height: 38px; /* Altura delgada y elegante */
+  padding: 0 12px;
+  margin-bottom: 4px;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
+
+  /* Icono interno */
+  .icono-input {
+    color: #4f6473; /* Azul Niebla */
+    font-size: 16px;
+    margin-right: 8px;
+    flex-shrink: 0;
+    transition: color 0.25s ease;
+  }
+
+  /* Efecto al enfocar cualquiera de los elementos internos */
+  &:focus-within {
+    border-color: #d4af37; /* Dorado */
+    box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+    background-color: #131b24;
+
+    .icono-input {
+      color: #d4af37;
+    }
+  }
+}
+
+/* Wrapper especial para textarea */
+.input-wrapper.textarea-wrapper {
+  height: auto;
+  min-height: 65px;
+  align-items: flex-start;
+  padding: 8px 12px;
+
+  .icono-input {
+    margin-top: 4px;
+  }
+}
+
+/* --- INPUT LIMPIO (Oculta estilos por defecto de Ionic) --- */
+.input-limpio {
+  --background: transparent !important;
+  --color: #ffffff !important;
+  --placeholder-color: #4b5e6b !important;
+  --placeholder-opacity: 1 !important;
+  --padding-start: 0px !important;
+  --padding-end: 0px !important;
+  --padding-top: 0px !important;
+  --padding-bottom: 0px !important;
+  --highlight-color-focused: transparent !important;
+  
+  flex: 1;
+  height: 100%;
+  margin: 0;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Ajustes específicos de Ionic Select para actuar dentro del wrapper */
+ion-select.input-limpio {
+  min-height: 100%;
+  
+  &::part(icon) {
+    color: #4f6473;
+    font-size: 16px;
+  }
+}
+
+/* Divisor */
+.divider {
+  border: 0;
+  border-top: 1px solid #243141;
+  margin: 15px 0 10px;
+}
+
+.form-footer {
+  margin-top: 20px;
+}
+
+/* Botón Guardar */
+.btn-guardar {
+  --background: #d4af37 !important;
+  --background-hover: #e5be48 !important;
+  --color: #0d1117 !important;
+  --border-radius: 6px !important;
+  --box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2) !important;
+  margin: 0;
+  font-weight: bold;
+  letter-spacing: 1px;
+  font-size: 13px;
+  text-transform: uppercase;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(15px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

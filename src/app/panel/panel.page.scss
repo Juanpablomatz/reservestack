@@ -1,0 +1,83 @@
+:host {
+  /* Paleta de colores basada en tu diseño elegante */
+  --color-fondo: #15181c;       /* Fondo oscuro casi negro */
+  --color-tarjeta: #1e2329;     /* Gris oscuro para dar contraste */
+  --color-texto: #ffffff;
+  --color-rosa-mex: #e5007e;    
+  --color-dorado: #d4af37;      
+}
+
+.fondo-oscuro {
+  --background: var(--color-fondo);
+}
+
+.contenedor-centrado {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  padding: 20px;
+}
+
+.tarjeta-oscura {
+  background: var(--color-tarjeta);
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  width: 100%;
+  max-width: 380px;
+  padding: 15px 10px;
+  border: none;
+}
+
+.titulo-centrado {
+  text-align: center;
+  color: var(--color-texto);
+  font-weight: 600;
+  letter-spacing: 2px;
+  font-size: 18px;
+  line-height: 1.4;
+  margin-bottom: 5px;
+}
+
+.botones-restaurantes {
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Espacio exacto entre los dos botones */
+  margin-top: 15px;
+}
+
+/* --- Botón Rosa Mexicano (Con el gradiente y sombra que tenías) --- */
+.btn-rosa-mex {
+  --background: linear-gradient(90deg, #ff0077, #c3006a); 
+  --color: white;
+  --border-radius: 6px;
+  --box-shadow: 0 4px 15px rgba(229, 0, 126, 0.3);
+  font-weight: bold;
+  letter-spacing: 1px;
+  height: 48px;
+  margin: 0;
+  transition: transform 0.2s ease;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+/* --- Botón Pietra Cucina (Estilo outline con borde dorado) --- */
+.btn-pietra {
+  --border-color: var(--color-dorado);
+  --border-style: solid;
+  --border-width: 1.5px;
+  --color: var(--color-dorado);
+  --border-radius: 6px;
+  --background-hover: rgba(212, 175, 55, 0.1);
+  font-weight: bold;
+  letter-spacing: 1px;
+  height: 48px;
+  margin: 0;
+  transition: transform 0.2s ease;
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
