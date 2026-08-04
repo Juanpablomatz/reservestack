@@ -20,7 +20,7 @@ app.use(cors());
 app.use(express.json());
 
 // =================================================================
-// CONFIGURACIÓN DE CORREO ELECTRONICO
+// CONFIGURACIÓN DE CORREO ELECTRÓNICO (NODEMAILER)
 // =================================================================
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -30,71 +30,80 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-async function enviarCorreoConfirmacion(reserva) {
-  if (!reserva.email) {
-    console.log('ℹ️ El cliente no proporcionó correo electrónico. Se omite el envío.');
+async function enviarCorreoPorTipo(reserva, tipo) {
+  if (!reserva.email || reserva.email.trim() === '') {
+    console.log('ℹ El cliente no proporcionó correo electrónico. Se omite el envío.');
+    return;
+  }
+
+  let asunto = '';
+  let contenidoHtml = '';
+
+  if (tipo === 'crear') {
+    asunto = `¡Tu Reserva está Confirmada! 🥂 - Pietra Cucina`;
+    contenidoHtml = `
+      <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #0d1117; color: #ffffff; border-radius: 12px; border: 1px solid #243141;">
+        <div style="text-align: center; border-bottom: 2px solid #d4af37; padding-bottom: 20px; margin-bottom: 25px;">
+          <h1 style="color: #d4af37; margin: 0; font-size: 28px; font-family: 'Times New Roman', serif;">PIETRA CUCINA</h1>
+          <p style="color: #768f9e; margin: 5px 0 0 0; font-size: 11px; text-transform: uppercase;">Confirmación Oficial de Reserva</p>
+        </div>
+        <p style="font-size: 15px; color: #9faec0;">Hola <strong style="color: #ffffff;">${reserva.nombre}</strong>,</p>
+        <p style="font-size: 15px; color: #9faec0;">Nos complace confirmarte que tu reservación ha sido registrada en nuestro sistema con éxito:</p>
+        <div style="background-color: #131b24; padding: 20px; border-radius: 8px; border: 1px solid #243141; margin: 25px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr><td style="padding: 6px 0; color: #768f9e;">FECHA:</td><td style="padding: 6px 0; color: #ffffff; text-align: right;"><b>${reserva.fecha}</b></td></tr>
+            <tr><td style="padding: 6px 0; color: #768f9e;">HORA:</td><td style="padding: 6px 0; color: #ffffff; text-align: right;"><b>${reserva.hora} hs</b></td></tr>
+            <tr><td style="padding: 6px 0; color: #768f9e;">INVITADOS:</td><td style="padding: 6px 0; color: #ffffff; text-align: right;"><b>${reserva.personas} personas</b></td></tr>
+            <tr><td style="padding: 6px 0; color: #768f9e;">ZONA:</td><td style="padding: 6px 0; color: #ffffff; text-align: right;"><b>${reserva.zona}</b></td></tr>
+            <tr><td style="padding: 6px 0; color: #768f9e;">MESA:</td><td style="padding: 6px 0; color: #d4af37; text-align: right;"><b>Mesa ${reserva.idMesa}</b></td></tr>
+          </table>
+        </div>
+        ${reserva.nota ? `<p style="color:#d4af37; font-style:italic; text-align:center;">"${reserva.nota}"</p>` : ''}
+      </div>
+    `;
+  } else if (tipo === 'llegada') {
+    asunto = `¡Tu Mesa está Lista! 🍽️ - Bienvenid@ a Pietra Cucina`;
+    contenidoHtml = `
+      <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #0d1117; color: #ffffff; border-radius: 12px; border: 1px solid #27ae60;">
+        <div style="text-align: center; border-bottom: 2px solid #27ae60; padding-bottom: 20px; margin-bottom: 25px;">
+          <h1 style="color: #27ae60; margin: 0; font-size: 28px; font-family: 'Times New Roman', serif;">PIETRA CUCINA</h1>
+          <p style="color: #27ae60; margin: 5px 0 0 0; font-size: 11px; text-transform: uppercase;">¡Mesa Asignada y Lista!</p>
+        </div>
+        <p style="font-size: 15px; color: #9faec0;">Hola <strong style="color: #ffffff;">${reserva.nombre}</strong>,</p>
+        <p style="font-size: 15px; color: #9faec0;">¡Nos alegra tenerte con nosotros! Tu mesa <b>Mesa ${reserva.idMesa}</b> en la zona <b>${reserva.zona}</b> ha sido asignada y te estamos esperando.</p>
+        <p style="text-align: center; color: #27ae60; font-weight: bold; font-size: 16px; margin-top: 20px;">¡Que disfrutes tu experiencia gastronómica!</p>
+      </div>
+    `;
+  } else if (tipo === 'noshow') {
+    asunto = `Aviso de Cancelación por Tolerancia (15 min) - Pietra Cucina`;
+    contenidoHtml = `
+      <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #0d1117; color: #ffffff; border-radius: 12px; border: 1px solid #c0392b;">
+        <div style="text-align: center; border-bottom: 2px solid #c0392b; padding-bottom: 20px; margin-bottom: 25px;">
+          <h1 style="color: #c0392b; margin: 0; font-size: 28px; font-family: 'Times New Roman', serif;">PIETRA CUCINA</h1>
+          <p style="color: #e74c3c; margin: 5px 0 0 0; font-size: 11px; text-transform: uppercase;">Aviso de Cancelación de Reserva</p>
+        </div>
+        <p style="font-size: 15px; color: #9faec0;">Hola <strong style="color: #ffffff;">${reserva.nombre}</strong>,</p>
+        <p style="font-size: 15px; color: #9faec0;">Lamentamos informarte que tu reservación programada para hoy a las <b>${reserva.hora} hs</b> ha sido cancelada debido a que se superó el límite de tolerancia de <b>15 minutos</b>.</p>
+        <p style="font-size: 13px; color: #768f9e; text-align: center; margin-top: 25px;">Si estás cerca o deseas agendar nuevamente, por favor comunícate con nuestro equipo de recepción.</p>
+      </div>
+    `;
+  } else {
     return;
   }
 
   const mailOptions = {
     from: '"Pietra Cucina" <juan2005pablomart@gmail.com>', 
     to: reserva.email,
-    subject: `¡Tu Reserva está Confirmada! 🥂 - Pietra Cucina`,
-    html: `
-      <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #0d1117; color: #ffffff; border-radius: 12px; border: 1px solid #243141;">
-        <div style="text-align: center; border-bottom: 2px solid #d4af37; padding-bottom: 20px; margin-bottom: 25px;">
-          <h1 style="color: #d4af37; margin: 0; font-size: 28px; font-family: 'Times New Roman', serif; letter-spacing: 2px;">PIETRA CUCINA</h1>
-          <p style="color: #768f9e; margin: 5px 0 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Confirmación Oficial de Reserva</p>
-        </div>
-        
-        <p style="font-size: 15px; line-height: 1.6; color: #9faec0;">Hola <strong style="color: #ffffff;">${reserva.nombre}</strong>,</p>
-        <p style="font-size: 15px; line-height: 1.6; color: #9faec0;">Nos complace confirmarte que tu reservación ha sido registrada en nuestro sistema con éxito. A continuación, te compartimos los detalles de tu mesa:</p>
-        
-        <div style="background-color: #131b24; padding: 20px; border-radius: 8px; border: 1px solid #243141; margin: 25px 0;">
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 6px 0; color: #768f9e; font-size: 12px; text-transform: uppercase;">Fecha:</td>
-              <td style="padding: 6px 0; color: #ffffff; font-weight: bold; text-align: right;">${reserva.fecha}</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0; color: #768f9e; font-size: 12px; text-transform: uppercase;">Hora:</td>
-              <td style="padding: 6px 0; color: #ffffff; font-weight: bold; text-align: right;">${reserva.hora} hs</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0; color: #768f9e; font-size: 12px; text-transform: uppercase;">Invitados:</td>
-              <td style="padding: 6px 0; color: #ffffff; font-weight: bold; text-align: right;">${reserva.personas} comensales</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0; color: #768f9e; font-size: 12px; text-transform: uppercase;">Zona asignada:</td>
-              <td style="padding: 6px 0; color: #ffffff; font-weight: bold; text-align: right; text-transform: uppercase;">${reserva.zona}</td>
-            </tr>
-            <tr>
-              <td style="padding: 6px 0; color: #768f9e; font-size: 12px; text-transform: uppercase;">Mesa física:</td>
-              <td style="padding: 6px 0; color: #d4af37; font-weight: bold; text-align: right;">Mesa ${reserva.idMesa}</td>
-            </tr>
-          </table>
-        </div>
-
-        ${reserva.nota ? `
-          <div style="background-color: rgba(212, 175, 55, 0.05); padding: 15px; border-left: 3px solid #d4af37; border-radius: 4px; margin-bottom: 25px;">
-            <small style="color: #d4af37; font-weight: bold; text-transform: uppercase; display: block; font-size: 10px; margin-bottom: 5px;">Notas especiales:</small>
-            <p style="margin: 0; color: #9faec0; font-size: 13px; font-style: italic;">"${reserva.nota}"</p>
-          </div>
-        ` : ''}
-
-        <p style="font-size: 13px; line-height: 1.6; color: #768f9e; text-align: center; margin-top: 30px; border-top: 1px solid #243141; padding-top: 20px;">
-          Si necesitas realizar algún cambio o cancelar tu reservación, por favor contáctanos con anticipación.<br>
-          <strong style="color: #ffffff;">¡Estamos ansiosos por recibirte!</strong>
-        </p>
-      </div>
-    `
+    subject: asunto,
+    html: contenidoHtml
   };
 
   try {
+    console.log(` Envíando correo [${tipo.toUpperCase()}] a: ${reserva.email}...`);
     await transporter.sendMail(mailOptions);
-    console.log(`📧 Correo de confirmación enviado con éxito a: ${reserva.email}`);
+    console.log(` Correo [${tipo.toUpperCase()}] enviado con éxito a: ${reserva.email}`);
   } catch (err) {
-    console.log(`⚠️ Alerta de Correo: No se pudo enviar el email. Detalle: ${err.message}`);
+    console.log(` Error Nodemailer: ${err.message}`);
   }
 }
 
@@ -123,10 +132,7 @@ async function obtenerReservasPietra() {
 
 // Sockets
 io.on('connection', (socket) => {
-  console.log(`🔌 Dispositivo conectado: ID ${socket.id}`);
-  socket.on('disconnect', () => {
-    console.log(`❌ Dispositivo desconectado.`);
-  });
+  socket.on('disconnect', () => {});
 });
 
 // ENDPOINTS PLANO
@@ -137,7 +143,6 @@ app.get('/api/pietra/diseno', async (req, res) => {
       FROM mesas WHERE id_restaurante = ?
     `;
     const [rows] = await db.query(query, [ID_RESTAURANTE_PIETRA]);
-
     const restauranteLayout = { 'Terraza': [], 'Nivel bajo': [], 'Nivel medio': [], 'Pared lloron': [] };
 
     rows.forEach((m) => {
@@ -152,7 +157,6 @@ app.get('/api/pietra/diseno', async (req, res) => {
     });
     res.json(restauranteLayout);
   } catch (error) {
-    console.error('Error GET diseño:', error);
     res.status(500).json({ error: 'Error interno' });
   }
 });
@@ -176,13 +180,10 @@ app.post('/api/pietra/diseno', async (req, res) => {
       }
     }
     await connection.commit(); 
-    
-    console.log(`📐 Distribución guardada en MySQL.`);
     io.emit('actualizar_diseno_pietra', restauranteLayout);
     res.json({ success: true, message: 'Plano guardado' });
   } catch (error) {
     await connection.rollback(); 
-    console.error('Error POST diseño:', error);
     res.status(500).json({ error: 'Error interno' });
   } finally {
     connection.release(); 
@@ -195,13 +196,12 @@ app.get('/api/pietra/reservas', async (req, res) => {
     const rows = await obtenerReservasPietra();
     res.json(rows);
   } catch (error) {
-    console.error('Error GET reservas:', error);
     res.status(500).json({ error: 'Error interno' });
   }
 });
 
 app.post('/api/pietra/reservas', async (req, res) => {
-  const { id, fecha, hora, zona, idMesa, nombre, personas, telefono, email, nota, estado, isNewRecord } = req.body;
+  const { id, fecha, hora, zona, idMesa, nombre, personas, telefono, email, nota, estado, tipoCorreo, isNewRecord } = req.body;
   try {
     const query = `
       INSERT INTO reservas (id_reserva, id_restaurante, fecha, hora, zona, id_mesa, nombre, personas, telefono, email, nota, estado)
@@ -213,13 +213,16 @@ app.post('/api/pietra/reservas', async (req, res) => {
       id, ID_RESTAURANTE_PIETRA, fecha, hora, zona, idMesa, nombre, personas, telefono || null, email || null, nota || null, estado
     ]);
 
-    console.log(`✉️ Reserva de "${nombre}" registrada/actualizada con éxito.`);
-
     const reservasActualizadas = await obtenerReservasPietra();
     io.emit('actualizar_pietra', reservasActualizadas);
 
-    if (isNewRecord) {
-      enviarCorreoConfirmacion(req.body);
+    // 🚨 ENVIAR CORREO SEGÚN EL TIPO RECIBIDO DEL CLIENTE/HOSTESS
+    if (tipoCorreo === 'llegada' || tipoCorreo === 'noshow' || tipoCorreo === 'crear') {
+      enviarCorreoPorTipo(req.body, tipoCorreo);
+    } else if (isNewRecord === true || isNewRecord === 'true') {
+      enviarCorreoPorTipo(req.body, 'crear');
+    } else {
+      console.log('ℹ Edición o movimiento de mesa. Correo OMITIDO.');
     }
 
     res.json({ success: true, message: 'Reserva registrada en MySQL con éxito' });
@@ -231,7 +234,6 @@ app.post('/api/pietra/reservas', async (req, res) => {
 
 server.listen(PORT, () => {
   console.log('==================================================');
-  console.log(`¡Servidor API y Sockets iniciado con éxito!`);
-  console.log(`Corriendo en: http://localhost:${PORT}`);
+  console.log(`¡Servidor API y Sockets corriendo en puerto ${PORT}!`);
   console.log('==================================================');
 });

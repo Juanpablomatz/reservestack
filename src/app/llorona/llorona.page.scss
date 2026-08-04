@@ -162,52 +162,8 @@
     .mesa.bloqueada { background: var(--blo) !important; background-color: var(--blo) !important; border-color: var(--blo); opacity: 0.7; .res-nombre, .res-pax, .mesa-numero, .mesa-capacidad { color: #ffffff !important; } }
     .mesa.seleccionable { border-color: var(--move); box-shadow: 0 0 10px rgba(142, 68, 173, 0.4); animation: pulsar 1.5s infinite; cursor: cell; }
 
-    /* ========================================================
-       EFECTO BICOLOR MITAD Y MITAD (MESAS MÚLTIPLES SIMPLES Y FUSIONADAS)
-       ======================================================== */
-    .mesa.mixta, 
-    .mesa.doble-ancho.mixta, 
-    .mesa.doble-alto.mixta {
-      background: linear-gradient(90deg, var(--res) 50%, var(--occ) 50%) !important;
-      background-color: transparent !important;
-      border: 2px solid #1a1d21 !important;
-      box-shadow: 0 0 15px rgba(212, 175, 55, 0.5) !important;
-
-      .res-nombre, .mesa-numero {
-        color: #1a1d21 !important;
-        background: rgba(255, 255, 255, 0.95) !important;
-        padding: 2px 6px !important;
-        border-radius: 4px !important;
-        font-weight: 800 !important;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important;
-      }
-
-      .res-pax, .mesa-capacidad {
-        color: #ffffff !important;
-        background: rgba(15, 23, 42, 0.85) !important;
-        padding: 2px 6px !important;
-        border-radius: 4px !important;
-        font-weight: 800 !important;
-        margin-top: 2px !important;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important;
-      }
-    }
-
-    .mesa.reservada-doble, 
-    .mesa.doble-ancho.reservada-doble, 
-    .mesa.doble-alto.reservada-doble {
-      background: linear-gradient(135deg, var(--res) 50%, #f39c12 50%) !important;
-      border-color: #f39c12 !important;
-      .res-nombre, .res-pax, .mesa-numero, .mesa-capacidad { color: #1a1d21 !important; }
-    }
-
-    .mesa.ocupada-doble, 
-    .mesa.doble-ancho.ocupada-doble, 
-    .mesa.doble-alto.ocupada-doble {
-      background: linear-gradient(135deg, var(--occ) 50%, #8e2a20 50%) !important;
-      border-color: #8e2a20 !important;
-      .res-nombre, .res-pax, .mesa-numero, .mesa-capacidad { color: #ffffff !important; }
-    }
+    .mesa.reservada-doble { background: var(--res) !important; border-color: var(--res); .res-nombre, .res-pax { color: #1a1d21 !important; } }
+    .mesa.ocupada-doble { background: var(--occ) !important; border-color: var(--occ); .res-nombre, .res-pax { color: #ffffff !important; } }
 
     /* ========================================================
        ESTILO ESTÉTICO DE LA FUSIÓN REAL DE DOS MESAS (Fusión Horizontal)
@@ -225,6 +181,7 @@
           border-color: #a25cc4 !important;
         }
 
+        /* FIX DE FONDO DE COLOR PARA FUSIÓN RESERVADA */
         &.reservada {
           background: var(--res) !important;
           background-color: var(--res) !important;
@@ -236,6 +193,7 @@
           }
         }
 
+        /* FIX DE FONDO DE COLOR PARA FUSIÓN OCUPADA / LLEGADA */
         &.ocupada, &.llegada {
           background: var(--occ) !important;
           background-color: var(--occ) !important;
@@ -247,6 +205,7 @@
           }
         }
 
+        /* FIX PARA BLOQUEADA */
         &.bloqueada {
           background: var(--blo) !important;
           background-color: var(--blo) !important;
@@ -273,6 +232,7 @@
           border-color: #a25cc4 !important;
         }
 
+        /* FIX DE FONDO DE COLOR PARA FUSIÓN RESERVADA */
         &.reservada {
           background: var(--res) !important;
           background-color: var(--res) !important;
@@ -284,6 +244,7 @@
           }
         }
 
+        /* FIX DE FONDO DE COLOR PARA FUSIÓN OCUPADA / LLEGADA */
         &.ocupada, &.llegada {
           background: var(--occ) !important;
           background-color: var(--occ) !important;
@@ -295,6 +256,7 @@
           }
         }
 
+        /* FIX PARA BLOQUEADA */
         &.bloqueada {
           background: var(--blo) !important;
           background-color: var(--blo) !important;
@@ -528,7 +490,7 @@
 .form-group input, .form-group select, .form-group textarea { padding: 10px; border: 1px solid #ddd; border-radius: 6px; background-color: #f9f9f9; color: #333; font-size: 13px; outline: none; font-family: inherit; transition: 0.2s; }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); background-color: #fff; box-shadow: 0 0 5px rgba(212, 175, 55, 0.2); }
 .btn-submit-reserva { transition: 0.2s; }
-.btn-submit-reserva:hover { background-color: #e5c158 !important; font-weight: bold; }
+.btn-submit-reserva:hover { background-color: #e5c158 !important; transform: translateY(-2px); }
 
 /* --- ANALÍTICA --- */
 .analytics-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
@@ -544,7 +506,7 @@
 .metric-item span { display: block; font-size: 10px; color: #7f8c8d; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
 .metric-item strong { display: block; font-size: 24px; color: var(--bg-sidebar); }
 
-/* --- CONTENEDOR CON ICONOS EN FORMULARIO --- */
+/* --- CONTENEDOR CON ICONOS EN FORMULARIO (Fecha/Hora en Modal) --- */
 .input-with-icon {
   display: flex;
   align-items: center;

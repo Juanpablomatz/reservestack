@@ -234,14 +234,14 @@ export class ReservarPietraPage implements OnInit {
       const data = await response.json();
 
       if (data.success) {
-        alert(`🎉 ¡Reserva confirmada con éxito!\nTe hemos asignado automáticamente la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmación enviada a: ${this.email || 'tu correo'}`);
+        alert(` ¡Reserva confirmada con éxito!\nTe hemos asignado automáticamente la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmación enviada a: ${this.email || 'tu correo'}`);
         this.limpiarFormulario();
       } else {
-        alert('❌ Error al procesar tu registro. Por favor vuelve a intentarlo.');
+        alert(' Error al procesar tu registro. Por favor vuelve a intentarlo.');
       }
     } catch (e) {
       console.error('Error al enviar la reserva:', e);
-      alert('❌ No se pudo conectar al servidor de reservas. Inténtalo de nuevo más tarde.');
+      alert(' No se pudo conectar al servidor de reservas. Inténtalo de nuevo más tarde.');
     }
   }
 

@@ -1,0 +1,61 @@
+<div class="booking-container">
+  <div class="booking-card">
+    <div class="booking-header">
+      <h1 class="brand-title">LLORONA COMEDOR</h1>
+      <p class="brand-subtitle">Reserva tu mesa en línea</p>
+    </div>
+
+    <form id="form-reserva-cliente" (submit)="hacerReservaCliente($event)">
+      <div class="form-row">
+        <div class="form-group">
+          <label>FECHA DE VISITA</label>
+          <input type="date" [(ngModel)]="fecha" name="fecha" required class="input-field" />
+        </div>
+        <div class="form-group">
+          <label>HORA</label>
+          <input type="time" [(ngModel)]="hora" name="hora" required class="input-field" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>PERSONAS (PAX)</label>
+          <input type="number" [(ngModel)]="personas" name="personas" min="1" max="20" required class="input-field" />
+        </div>
+        <div class="form-group">
+          <label>ZONA PREFERIDA</label>
+          <select [(ngModel)]="zona" name="zona" class="input-field">
+            <option value="Terraza">Terraza</option>
+            <option value="Salón Principal">Salón Principal</option>
+            <option value="Barra / VIP">Barra / VIP</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>NOMBRE COMPLETO</label>
+        <input type="text" [(ngModel)]="nombre" name="nombre" placeholder="Ej. Ana García" required class="input-field" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>TELÉFONO DE CONTACTO</label>
+          <input type="tel" [(ngModel)]="telefono" name="telefono" placeholder="Ej. 5512345678" required class="input-field" />
+        </div>
+        <div class="form-group">
+          <label>CORREO ELECTRÓNICO (Para Confirmación)</label>
+          <input type="email" [(ngModel)]="email" name="email" placeholder="correo@ejemplo.com" required class="input-field" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>NOTAS ESPECIALES O ALERGIAS</label>
+        <textarea [(ngModel)]="nota" name="nota" rows="2" placeholder="Cumpleaños, preferencia de mesa..." class="input-field"></textarea>
+      </div>
+
+      <button type="submit" class="btn-confirmar-reserva">
+        CONFIRMAR RESERVA EN LLORONA COMEDOR
+      </button>
+    </form>
+  </div>
+</div>

@@ -15,16 +15,20 @@ export const routes: Routes = [
     loadComponent: () => import('./panel/panel.page').then( m => m.PanelPage)
   },
   {
+    path: 'pietra',
+    loadComponent: () => import('./pietra/pietra.page').then(m => m.PietraPage)
+  },
+  {
     path: 'rosa',
     loadComponent: () => import('./rosa/rosa.page').then( m => m.RosaPage)
   },
   {
-    path: 'reservar', 
-    loadComponent: () => import('./reservar/reservar.page').then( m => m.ReservarPage)
+    path: 'llorona', 
+    loadComponent: () => import('./llorona/llorona.page').then(m => m.LloronaPage)
   },
   {
-    path: 'pietra',
-    loadComponent: () => import('./pietra/pietra.page').then( m => m.PietraPage)
+    path: 'reservar', 
+    loadComponent: () => import('./reservar/reservar.page').then( m => m.ReservarPage)
   },
   {
     path: 'reservar-pietra', 
