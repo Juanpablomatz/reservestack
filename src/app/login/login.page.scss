@@ -1,5 +1,6 @@
 .fondo-pantalla {
-  --background: #0f1519;
+  /* 🖼️ Imagen de fondo con filtro oscuro elegante */
+  --background: linear-gradient(rgba(15, 21, 25, 0.82), rgba(15, 21, 25, 0.82)), url('/assets/bg-login.jpg') no-repeat center center / cover !important;
 }
 
 .contenedor-centrado {
@@ -7,62 +8,70 @@
   justify-content: center;
   align-items: center;
   height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
 }
 
 .tarjeta-oscura {
-  background: #1b262c;
-  padding: 20px;
-  border-radius: 15px;
+  /* 🍷 Efecto Cristal Difuminado de Lujo */
+  background: rgba(27, 38, 44, 0.9) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 25px 20px;
+  border-radius: 18px;
   text-align: center;
-  border: 1px solid #333;
-  width: 320px;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+  border: 1.5px solid #d4af37;
+  width: 100%;
+  max-width: 350px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 25px rgba(212, 175, 55, 0.2);
+  animation: zoomIn 0.3s ease-out;
 }
 
 .titulo {
-  color: #fff;
+  color: #ffffff;
   font-size: 22px;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 2px;
   margin-bottom: 10px;
+  font-family: 'Times New Roman', serif;
 }
 
 .input-item {
-  --background: #28353e;
-  --color: white;
+  --background: rgba(40, 53, 62, 0.95) !important;
+  --color: #ffffff !important;
+  --placeholder-color: #a0aec0 !important;
+  --placeholder-opacity: 0.8;
   margin-top: 15px;
-  border: 1px solid #444;
-  border-radius: 5px;
+  border: 1px solid #445465;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
   
   &.item-has-focus {
-    border-color: #d4af37;
+    border-color: #d4af37 !important;
+    box-shadow: 0 0 12px rgba(212, 175, 55, 0.35);
   }
 }
 
 ion-button {
   margin-top: 25px;
   font-weight: bold;
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 1px;
 }
 
-/* ESTILO LOGIN MAESTRO */
+/* ESTILO LOGIN MAESTRO / BOTÓN DORADO */
 .btn-dorado {
   --background: #d4af37;
   --background-hover: #f3d25d;
   --color: #1b262c;
+  --border-radius: 8px;
+  font-weight: 800;
+  box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
 }
 
-/* ESTILO ROSA MEXICANO */
-.btn-rosa {
-  --background: linear-gradient(45deg, #e5007e, #9b0050);
-  --box-shadow: 0 4px 15px rgba(229, 0, 126, 0.4);
-}
-
-/* ESTILO PIETRA CUCINA */
-.btn-pietra {
-  --background: linear-gradient(45deg, #34495e, #2c3e50);
-  border: 2px solid #d4af37;
-  --color: #d4af37;
-  border-radius: 4px;
+@keyframes zoomIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }

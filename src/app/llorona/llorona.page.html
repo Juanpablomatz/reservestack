@@ -1,37 +1,310 @@
 <div class="dashboard-container">
+    <!-- COLUMNA 1: SIDEBAR LLORONA COMEDOR -->
     <aside class="sidebar">
         <div class="sidebar-brand">
-            <h2 style="color: #27ae60; font-family: serif; margin: 0;">LLORONA COMEDOR</h2>
-            <small style="color: #aaa;">Panel de Hostess</small>
+            <img src="assets/imgllorona.jpg" alt="Llorona Comedor" class="sidebar-logo" />
         </div>
+        
+        <nav class="main-nav">
+            <a href="#" class="nav-link active" data-vista="plano"><i class="fas fa-map-marker-alt"></i> Plano</a>
+            <a href="#" class="nav-link" data-vista="analitica"><i class="fas fa-chart-line"></i> Analítica</a>
+        </nav>
         
         <div class="sidebar-content-wrapper">
             <div id="vista-lista-sidebar">
                 <div class="section-header">
-                    <h3 style="color: #27ae60;">Reservas Activas</h3>
+                    <h3>Reservas Activas</h3>
+                    <button id="nueva-reserva-btn" class="btn-small" (click)="abrirModalNuevaReserva(zonaActiva)"><i class="fas fa-plus"></i></button>
+                </div>
+                <div class="search-sidebar-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="input-buscador" class="search-input" placeholder="Buscar cliente o mesa..." autocomplete="off" />
                 </div>
                 <div id="lista-reservas-sidebar" class="lista-reservas-sidebar"></div>
             </div>
         </div>
+
+        <div class="sidebar-footer">
+            <button id="btn-logout" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+            </button>
+        </div>
     </aside>
 
+    <!-- COLUMNA 2: CONTENIDO PRINCIPAL -->
     <main class="main-content">
+        <!-- Aviso de movimiento de reservaciones -->
+        <div id="aviso-mover" class="aviso-modo-mover oculto">
+            <span><i class="fas fa-exchange-alt"></i> Elige mesa libre en Llorona Comedor</span>
+            <button id="btn-cancelar-mover" class="btn-cancelar-mover">Cancelar</button>
+        </div>
+
+        <!-- Aviso para combinación de mesas físicas -->
+        <div id="aviso-combinar" class="aviso-modo-mover aviso-combinacion oculto">
+            <span><i class="fas fa-link"></i> Selecciona la primera mesa y luego la segunda para fusionarlas</span>
+            <button id="btn-cancelar-combinar" class="btn-cancelar-mover">Cancelar</button>
+        </div>
+
+        <!-- MODAL DE ELECCIÓN DE TIPO DE FUSIÓN -->
+        <div id="modal-tipo-fusion" class="modal-overlay oculto fusion-choice-modal">
+            <div class="fusion-choice-card" role="dialog" aria-modal="true" aria-labelledby="fusion-title">
+                <div class="fusion-choice-header">
+                    <div>
+                        <span class="fusion-choice-icon"><i class="fas fa-link"></i></span>
+                        <h2 id="fusion-title">¿Cómo deseas fusionar las mesas?</h2>
+                    </div>
+                    <button id="btn-cancelar-tipo-fusion" class="modal-close-btn" aria-label="Cerrar">&times;</button>
+                </div>
+                <p>Elige el alcance de esta fusión en Llorona Comedor. Las reservas del día no se modificarán.</p>
+                <div class="fusion-choice-actions">
+                    <button id="btn-fusion-temporal" class="fusion-choice-button temporal">
+                        <i class="far fa-calendar"></i>
+                        <span><strong>Solo hoy</strong><small>Se aplica únicamente a la fecha seleccionada.</small></span>
+                    </button>
+                    <button id="btn-fusion-permanente" class="fusion-choice-button permanente">
+                        <i class="fas fa-calendar-check"></i>
+                        <span><strong>Permanente</strong><small>Se aplicará desde hoy en los días siguientes.</small></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- BARRA DE HERRAMIENTAS DEL EDITOR DE PLANO -->
+        <div id="toolbar-editor" class="editor-toolbar-container oculto">
+            <div class="editor-left">
+                <span class="editor-badge"><i class="fas fa-tools"></i> MODO EDICIÓN LLORONA</span>
+                <small class="editor-hint">Arrastra las mesas para moverlas de lugar</small>
+            </div>
+            <div class="editor-actions">
+                <button id="btn-add-mesa" class="btn-editor-action"><i class="fas fa-plus"></i> Agregar Mesa</button>
+                <button id="btn-combinar-mesas" class="btn-editor-action"><i class="fas fa-link"></i> Fusionar Mesas</button>
+                <button id="btn-save-diseno" class="btn-editor-action btn-save"><i class="fas fa-check"></i> Guardar Distribución</button>
+                <button id="btn-cancel-edicion" class="btn-editor-action btn-cancel"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+        </div>
+
+        <!-- VISTA DE PLANO (1 ZONA ÚNICA: Piso) -->
         <div id="vista-plano" class="vista">
             <div class="main-header">
                 <div class="header-left">
-                    <h1 class="page-title">Plano - Llorona Comedor (Área Piso)</h1>
+                    <h1 class="page-title">Plano - Llorona Comedor</h1>
                     <div class="date-controls">
+                        <button id="btn-prev-day" class="btn-icon-date"><i class="fas fa-chevron-left"></i></button>
                         <input type="date" id="filtro-fecha-global" class="input-fecha-header" />
+                        <button id="btn-next-day" class="btn-icon-date"><i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
                 
                 <div class="zonas-nav">
-                    <button class="zona-btn active">Área Única: Piso (10 Mesas)</button>
+                    <button data-zona="Piso" class="zona-btn active">Piso</button>
+                    <span class="nav-divider"></span>
+                    <button id="btn-editar-plano" class="btn-editar"><i class="fas fa-tools"></i> Editar</button>
                 </div>
             </div>
+            
+            <!-- TARJETAS DE MÉTRICAS -->
+            <div class="data-cards-container">
+                <div class="data-card occupancy"><div class="stat-info"><label class="data-label">Ocupadas</label><span id="stats-ocupadas" class="data-value">0</span></div></div>
+                <div class="data-card"><div class="stat-info"><label class="data-label">Reservadas</label><span id="stats-reservadas" class="data-value">0</span></div></div>
+                <div class="data-card"><div class="stat-info"><label class="data-label">Libres</label><span id="stats-libres" class="data-value">0</span></div></div>
+                <div class="data-card blocked"><div class="stat-info"><label class="data-label">Bloqueadas</label><span id="stats-bloqueadas" class="data-value">0</span></div></div>
+                <div class="data-card total-bookings"><div class="stat-info"><label class="data-label">Totales del Día</label><span id="stats-totales-dia" class="data-value">0</span></div></div>
+                <div class="data-card pax-total"><div class="stat-info"><label class="data-label">Pax Total</label><span id="stats-pax-total" class="data-value">0</span></div></div>
+                <div class="data-card"><div class="stat-info"><label class="data-label">% Ocupación</label><span id="stats-porcentaje-ocupacion" class="data-value">0%</span></div></div>
+            </div>
 
-            <!-- PLANO FÍSICO DE LAS 10 MESAS DE LLORONA COMEDOR -->
+            <!-- Plano físico del restaurante -->
             <div id="plano-restaurante" class="tables-area tables-grid"></div>
         </div>
+
+        <!-- VISTA DE ANALÍTICA Y REPORTES -->
+        <div id="vista-analitica" class="vista oculto">
+            <div class="main-header"><h1 class="page-title">Reporte & Analítica - Llorona Comedor</h1></div>
+            
+            <div class="analytics-grid">
+                <!-- TARJETA 1: GRÁFICA DE RENDIMIENTO -->
+                <div class="analytics-card">
+                    <div class="card-header-flex">
+                        <h3><i class="fas fa-chart-pie"></i> Ocupación en Piso</h3>
+                        <button id="btn-toggle-chart" class="btn-small" title="Cambiar tipo de gráfica"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="grafica-zonas"></canvas>
+                    </div>
+                </div>
+                
+                <!-- TARJETA 2: MÉTRICAS CLAVE DEL DÍA -->
+                <div class="analytics-card">
+                    <h3><i class="fas fa-chart-bar"></i> Métricas del Día</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <span class="metric-label">PAX PROMEDIO</span>
+                            <strong id="data-avg-pax" class="metric-val text-accent">0.0</strong>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">MESAS TOTALES</span>
+                            <strong id="data-total-reservas" class="metric-val text-main">0</strong>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">HORA PICO</span>
+                            <strong id="data-peak-hour" class="metric-val text-success">--:--</strong>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">ZONA TOP</span>
+                            <strong id="data-top-zone" class="metric-val text-purple">--</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
+</div>
+
+<!-- POPOVER FLOTANTE REDISEÑADO CON MESA Y NOTAS VISIBLES -->
+<div id="popover-rapido-mesa" class="popover-overlay oculto">
+    <div class="popover-card">
+        <div class="popover-header">
+            <div class="popover-title-group">
+                <span class="popover-mesa-badge">Mesa <strong id="pop-mesa-id">--</strong></span>
+                <span id="pop-status-badge" class="popover-status-badge">LIBRE</span>
+            </div>
+            <button id="btn-close-popover" class="popover-close-btn" title="Cerrar">&times;</button>
+        </div>
+
+        <div class="popover-body">
+            <!-- INFO BÁSICA DE 1 SOLA RESERVA / LIBRE -->
+            <div id="pop-single-info" class="popover-info-grid">
+                <div class="info-cell"><i class="fas fa-user-group"></i> <strong id="pop-mesa-pax">--</strong> pax</div>
+                <div class="info-cell"><i class="fas fa-user"></i> <strong id="pop-cliente-nombre">Disponible</strong></div>
+                <div class="info-cell"><i class="far fa-clock"></i> <strong id="pop-hora">--:--</strong></div>
+                <div class="info-cell"><i class="fas fa-chair"></i> <strong id="pop-tel">Mesa --</strong></div>
+            </div>
+
+            <!-- CAJA DE NOTA DE LA RESERVA -->
+            <div id="pop-nota-container" class="pop-nota-box oculto">
+                <i class="far fa-sticky-note"></i> <span id="pop-nota-texto"></span>
+            </div>
+
+            <!-- BOTONES / LISTA CON SCROLL PARA MÚLTIPLES RESERVAS -->
+            <div id="pop-acciones-group" class="popover-actions-container"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MENU CONTEXTUAL PARA MESAS -->
+<div id="menu-mesa" class="menu-contextual oculto">
+    <button data-accion="nueva-reserva-mesa" class="menu-opcion"><i class="fas fa-plus"></i> Nueva Reserva</button>
+    <button data-accion="walk-in" class="menu-opcion"><i class="fas fa-street-view"></i> Walk-in</button>
+    <button data-accion="bloquear" class="menu-opcion"><i class="fas fa-lock"></i> Bloquear</button>
+    <button data-accion="marcar-llegada" class="menu-opcion"><i class="fas fa-bell-concierge"></i> Marcar Llegada</button>
+    <button data-accion="mover-mesa" class="menu-opcion"><i class="fas fa-arrows-up-down-left-right"></i> Mover Mesa</button>
+    <button data-accion="liberar-mesa" class="menu-opcion"><i class="fas fa-broom"></i> Liberar</button>
+    <button data-accion="cancelar-reserva" class="menu-opcion"><i class="fas fa-trash-alt"></i> Cancelar</button>
+    <button data-accion="desbloquear" class="menu-opcion"><i class="fas fa-unlock"></i> Desbloquear</button>
+</div>
+
+<!-- MODAL: NUEVA RESERVA LLORONA COMEDOR -->
+<div id="modal-nueva-reserva" class="modal-overlay oculto">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Nueva Reserva - Llorona Comedor</h2>
+            <button id="close-nueva-reserva" class="modal-close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="form-nueva-reserva">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>FECHA</label>
+                        <div class="input-with-icon">
+                            <i class="far fa-calendar-alt icono-formulario"></i>
+                            <input type="date" id="res-fecha" required />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>HORA</label>
+                        <div class="input-with-icon">
+                            <i class="far fa-clock icono-formulario"></i>
+                            <input type="time" id="res-hora" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>ZONA</label><select id="res-zona" required></select></div>
+                    <div class="form-group"><label>MESA</label><select id="res-mesa" required></select></div>
+                </div>
+                
+                <h3 style="font-size: 14px; margin-top: 15px; margin-bottom: 15px; color: var(--bg-sidebar); border-bottom: 1px solid #eee; padding-bottom: 5px;">Datos del cliente</h3>
+                
+                <div class="form-row">
+                    <div class="form-group"><label>NOMBRE</label><input type="text" id="res-nombre" placeholder="Ej. Cliente" required /></div>
+                    <div class="form-group"><label>PERSONAS</label><input type="number" id="res-personas" min="1" value="2" required /></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>TELÉFONO</label><input type="tel" id="res-telefono" placeholder="Solo números" oninput="this.value = this.value.replace(/[^0-9]/g, '')" /></div>
+                    <div class="form-group"><label>EMAIL</label><input type="email" id="res-email" placeholder="Opcional" /></div>
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>NOTAS</label><textarea id="res-notas" rows="2" placeholder="Alergias, aniversarios..."></textarea>
+                </div>
+                
+                <button type="submit" class="btn-submit-reserva" style="width: 100%; background-color: var(--accent); color: var(--bg-sidebar); border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px;">GUARDAR RESERVA</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: DETALLE DE RESERVA -->
+<div id="modal-detalle-reserva" class="modal-overlay oculto">
+    <div class="modal-content">
+        <div class="modal-header"><h2 id="popup-nombre">Detalle</h2><button id="popup-close-btn" class="modal-close-btn">&times;</button></div>
+        <div class="modal-body">
+            <div class="detalle-grid">
+                <div class="dato-item"><i class="fas fa-user-group"></i> <strong id="popup-personas"></strong> pax</div>
+                <div class="dato-item"><i class="fas fa-map-pin"></i> Mesa <strong id="popup-mesa"></strong></div>
+                <div class="dato-item"><i class="far fa-calendar-alt"></i> <strong id="popup-fecha"></strong></div>
+                <div class="dato-item"><i class="far fa-clock"></i> <strong id="popup-hora"></strong></div>
+                <div class="dato-item"><i class="fas fa-map"></i> <span id="popup-zona"></span></div>
+                <div class="dato-item"><i class="fas fa-info-circle"></i> <span id="popup-status" class="badge"></span></div>
+            </div>
+            <hr style="border: none; border-top: 1px solid #f1f5f9; margin: 15px 0;">
+            <div class="contacto-info">
+                <p><i class="fas fa-phone"></i> <span id="popup-tel"></span></p>
+                <p><i class="fas fa-envelope"></i> <span id="popup-email"></span></p>
+            </div>
+            <div class="nota-box"><small>Notas:</small><p id="popup-nota"></p></div>
+            <div id="popup-acciones" class="modal-footer-acciones"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: LISTA DE MESAS -->
+<div id="modal-lista-mesa" class="modal-overlay oculto">
+    <div class="modal-content">
+        <div class="modal-header"><h2>Múltiples Reservas - Llorona Comedor</h2><button id="lista-mesa-close-btn" class="modal-close-btn">&times;</button></div>
+        <div class="modal-body">
+            <p style="color:#aaa;">Selecciona una reserva:</p>
+            <div id="lista-conflictos" class="lista-conflictos"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: WALK-IN -->
+<div id="modal-walkin" class="modal-overlay oculto">
+    <div class="modal-content" style="max-width: 320px; text-align: center; padding: 30px;">
+        <div class="modal-header" style="justify-content: center; border-bottom: none; margin-bottom: 10px; padding-bottom: 0;">
+            <h2 style="font-size: 22px;">Walk-in Rápido</h2>
+        </div>
+        <div class="modal-body">
+            <p style="color: #7f8c8d; font-size: 13px; margin-bottom: 15px; font-weight: bold; text-transform: uppercase;">¿Número de personas?</p>
+            <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 25px;">
+                <button type="button" id="btn-minus-walkin" style="width: 45px; height: 45px; border-radius: 8px; border: 2px solid var(--accent); background: white; color: var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center;">-</button>
+                <input type="number" id="input-pax-walkin" value="2" min="1" style="width: 70px; text-align: center; font-size: 28px; font-weight: bold; border: none; border-bottom: 3px solid var(--accent); color: var(--bg-sidebar); outline: none; background: transparent; padding: 0;">
+                <button type="button" id="btn-plus-walkin" style="width: 45px; height: 45px; border-radius: 8px; border: none; background: var(--accent); color: white; font-size: 24px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center;">+</button>
+            </div>
+            <div style="display: flex; gap: 10px; flex-direction: column;">
+                <button id="btn-confirmar-walkin" class="btn-accion-full btn-llegada" style="margin-bottom: 0; padding: 12px;"><i class="fas fa-check"></i> Ocupar Mesa</button>
+                <button id="close-walkin" class="btn-accion-full btn-cancelar" style="margin-bottom: 0; padding: 12px; background-color: #95a5a6 !important;"><i class="fas fa-times"></i> Cancelar</button>
+            </div>
+        </div>
+    </div>
 </div>

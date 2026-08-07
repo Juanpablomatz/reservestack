@@ -1,61 +1,95 @@
-<div class="booking-container">
-  <div class="booking-card">
-    <div class="booking-header">
-      <h1 class="brand-title">LLORONA COMEDOR</h1>
-      <p class="brand-subtitle">Reserva tu mesa en línea</p>
+<ion-content class="fondo-pantalla">
+  <div class="reservar-container">
+    <div class="reservar-card">
+      <div class="reservar-header">
+        <div class="logo-box">
+          <img src="assets/imgllorona.jpg" alt="Llorona Comedor" class="brand-logo" />
+        </div>
+        <h2 class="brand-title">NUEVA RESERVA</h2>
+      </div>
+
+      <form (ngSubmit)="confirmarReservacion()" class="reservar-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>FECHA DE VISITA</label>
+            <div class="input-wrapper">
+              <ion-icon name="calendar-outline"></ion-icon>
+              <input type="date" [(ngModel)]="fecha" name="fecha" [min]="todayDate" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>HORA</label>
+            <div class="input-wrapper">
+              <ion-icon name="time-outline"></ion-icon>
+              <input type="time" [(ngModel)]="hora" name="hora" required />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>NÚMERO DE PERSONAS</label>
+          <div class="input-wrapper">
+            <ion-icon name="people-outline"></ion-icon>
+            <input type="number" [(ngModel)]="personas" name="personas" min="1" max="50" required placeholder="Ej. 4 personas" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>ZONA DE PREFERENCIA</label>
+          <div class="input-wrapper select-wrapper">
+            <ion-icon name="restaurant-outline"></ion-icon>
+            <select [(ngModel)]="zona" name="zona" required>
+              <option *ngFor="let z of zonasDisponibles" [value]="z">{{ z | uppercase }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row" style="margin-top: 20px;">
+          <div class="form-group">
+            <label>NOMBRE</label>
+            <div class="input-wrapper">
+              <ion-icon name="person-outline"></ion-icon>
+              <input type="text" [(ngModel)]="nombre" name="nombre" placeholder="Ej. Juan" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>APELLIDO</label>
+            <div class="input-wrapper">
+              <ion-icon name="person-outline"></ion-icon>
+              <input type="text" [(ngModel)]="apellido" name="apellido" placeholder="Ej. Pérez" required />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>NÚMERO DE TELÉFONO</label>
+          <div class="input-wrapper">
+            <ion-icon name="call-outline"></ion-icon>
+            <input type="tel" [(ngModel)]="telefono" name="telefono" (input)="limpiarTelefono($event)" placeholder="Ej. 5512345678" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>CORREO ELECTRÓNICO</label>
+          <div class="input-wrapper">
+            <ion-icon name="mail-outline"></ion-icon>
+            <input type="email" [(ngModel)]="email" name="email" placeholder="ejemplo@correo.com" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>NOTAS O PETICIONES ESPECIALES</label>
+          <div class="input-wrapper textarea-wrapper">
+            <ion-icon name="document-text-outline"></ion-icon>
+            <textarea [(ngModel)]="nota" name="nota" rows="2" placeholder="Alergias, aniversarios, preferencia de mesa..."></textarea>
+          </div>
+        </div>
+
+        <button type="submit" [disabled]="cargando" class="btn-submit">
+          <span *ngIf="!cargando">CONFIRMAR RESERVACIÓN</span>
+          <span *ngIf="cargando"><i class="fas fa-spinner fa-spin"></i> PROCESANDO...</span>
+        </button>
+      </form>
     </div>
-
-    <form id="form-reserva-cliente" (submit)="hacerReservaCliente($event)">
-      <div class="form-row">
-        <div class="form-group">
-          <label>FECHA DE VISITA</label>
-          <input type="date" [(ngModel)]="fecha" name="fecha" required class="input-field" />
-        </div>
-        <div class="form-group">
-          <label>HORA</label>
-          <input type="time" [(ngModel)]="hora" name="hora" required class="input-field" />
-        </div>
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label>PERSONAS (PAX)</label>
-          <input type="number" [(ngModel)]="personas" name="personas" min="1" max="20" required class="input-field" />
-        </div>
-        <div class="form-group">
-          <label>ZONA PREFERIDA</label>
-          <select [(ngModel)]="zona" name="zona" class="input-field">
-            <option value="Terraza">Terraza</option>
-            <option value="Salón Principal">Salón Principal</option>
-            <option value="Barra / VIP">Barra / VIP</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>NOMBRE COMPLETO</label>
-        <input type="text" [(ngModel)]="nombre" name="nombre" placeholder="Ej. Ana García" required class="input-field" />
-      </div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label>TELÉFONO DE CONTACTO</label>
-          <input type="tel" [(ngModel)]="telefono" name="telefono" placeholder="Ej. 5512345678" required class="input-field" />
-        </div>
-        <div class="form-group">
-          <label>CORREO ELECTRÓNICO (Para Confirmación)</label>
-          <input type="email" [(ngModel)]="email" name="email" placeholder="correo@ejemplo.com" required class="input-field" />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>NOTAS ESPECIALES O ALERGIAS</label>
-        <textarea [(ngModel)]="nota" name="nota" rows="2" placeholder="Cumpleaños, preferencia de mesa..." class="input-field"></textarea>
-      </div>
-
-      <button type="submit" class="btn-confirmar-reserva">
-        CONFIRMAR RESERVA EN LLORONA COMEDOR
-      </button>
-    </form>
   </div>
-</div>
+</ion-content>

@@ -1,0 +1,186 @@
+/* ========================================================
+   TEMA PÚBLICO RESERVAR - LLORONA COMEDOR (FORMATO IDENTICO A PIETRA)
+   ======================================================== */
+
+:host {
+  display: block;
+  min-height: 100vh;
+  background-color: #0f0905;
+  font-family: 'Segoe UI', sans-serif;
+  color: #ffffff;
+}
+
+.fondo-pantalla {
+  --background: #0f0905 !important;
+}
+
+.reservar-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+.reservar-card {
+  background: #1a100a;
+  border-top: 3px solid #f1c40f;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 480px;
+  padding: 30px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+  box-sizing: border-box;
+}
+
+.reservar-header {
+  text-align: center;
+  margin-bottom: 25px;
+
+  .logo-box {
+    background: #2b170c;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 18px auto;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+
+    .brand-logo {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+  }
+
+  .brand-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: #f1c40f;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+}
+
+.form-row {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 0;
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .form-group {
+    flex: 1;
+  }
+}
+
+.form-group {
+  margin-bottom: 18px;
+
+  label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #a0aec0;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .input-wrapper {
+    display: flex;
+    align-items: center;
+    background: #251710;
+    border: 1px solid #3d281c;
+    border-radius: 6px;
+    padding: 0 12px;
+    height: 44px;
+    transition: all 0.2s ease;
+
+    ion-icon {
+      color: #a0aec0;
+      font-size: 18px;
+      margin-right: 10px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: none;
+      background: transparent !important;
+      color: #ffffff !important;
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+
+      &::placeholder {
+        color: #635347 !important;
+      }
+    }
+
+    select {
+      cursor: pointer;
+      option {
+        background: #251710 !important;
+        color: #ffffff !important;
+      }
+    }
+
+    &:focus-within {
+      border-color: #f1c40f;
+      box-shadow: 0 0 0 2px rgba(241, 196, 15, 0.2);
+
+      ion-icon {
+        color: #f1c40f;
+      }
+    }
+
+    &.textarea-wrapper {
+      height: auto;
+      padding: 10px 12px;
+      align-items: flex-start;
+
+      ion-icon {
+        margin-top: 2px;
+      }
+
+      textarea {
+        resize: none;
+      }
+    }
+  }
+}
+
+.btn-submit {
+  width: 100%;
+  height: 46px;
+  background: #f1c40f;
+  color: #1a100a;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 10px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #f3d23e;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
