@@ -87,33 +87,30 @@ export class ReservarPietraPage implements OnInit {
     await this.cargarDisenoMesas();
   }
 
-  // Calcula la fecha de hoy en formato local del restaurante para bloquear días pasados
   calcularFechaMinimaLocal() {
     const localDate = new Date();
     const offset = localDate.getTimezoneOffset();
     const adjustedDate = new Date(localDate.getTime() - (offset * 60 * 1000));
     this.todayDate = adjustedDate.toISOString().split('T')[0];
     this.fecha = this.todayDate;
+    this.hora = '15:00';
   }
 
-  // Intercepta el teclado a nivel de DOM físico para rechazar de inmediato cualquier letra
   limpiarTelefono(event: any) {
     const input = event.target;
     if (input) {
       let value = input.value;
-      value = value.replace(/[^0-9]/g, ''); // Deja solo dígitos
-      input.value = value;                  // Forza la actualización visual en pantalla
-      this.telefono = value;                // Forza la sincronización en memoria
+      value = value.replace(/[^0-9]/g, '');
+      input.value = value;
+      this.telefono = value;
     }
   }
 
-  // Cargar el diseño de las mesas desde MySQL o usar el respaldo local
   async cargarDisenoMesas() {
     try {
       const resp = await fetch(`${this.BASE_URL}/api/pietra/diseno`);
       const data = await resp.json();
       
-      // Si la base de datos tiene mesas guardadas, las cargamos de forma dinámica
       const tieneMesas = Object.values(data).some((arr: any) => arr && arr.length > 0);
       if (tieneMesas) {
         this.restauranteLayout = data;
@@ -124,14 +121,58 @@ export class ReservarPietraPage implements OnInit {
     }
   }
 
-  // --- ALGORITMO DE AUTO-ASIGNACIÓN DE MESAS ---
+  // ⏰ VALIDACIÓN INTELIGENTE DE HORARIOS Y HORAS PASADAS (PIETRA CUCINA)
+  validarHorarioServicio(fechaStr: string, horaStr: string): { valido: boolean; mensaje: string } {
+    if (!fechaStr || !horaStr) {
+      return { valido: false, mensaje: 'Por favor selecciona fecha y hora.' };
+    }
+
+    const [year, month, day] = fechaStr.split('-').map(Number);
+    const fechaObj = new Date(year, month - 1, day);
+    const diaSemana = fechaObj.getDay(); // 0: Domingo, 1: Lunes, 2: Martes, 3: Miércoles, 4: Jueves, 5: Viernes, 6: Sábado
+
+    // 1. Días cerrados en Pietra Cucina
+    if (diaSemana === 1) { // Lunes
+      return { valido: false, mensaje: 'Pietra Cucina se encuentra CERRADO los días Lunes.' };
+    }
+
+    // 2. Horarios oficiales por día en Pietra Cucina
+    let horaApertura = '14:00';
+    let horaCierre = '21:00';
+
+    if (diaSemana >= 2 && diaSemana <= 4) { // Martes a Jueves (2:00 PM - 9:00 PM)
+      horaApertura = '14:00'; horaCierre = '21:00';
+    } else if (diaSemana === 5 || diaSemana === 6) { // Viernes y Sábado (2:00 PM - 11:00 PM)
+      horaApertura = '14:00'; horaCierre = '23:00';
+    } else if (diaSemana === 0) { // Domingo (1:00 PM - 8:00 PM)
+      horaApertura = '13:00'; horaCierre = '20:00';
+    }
+
+    if (horaStr < horaApertura || horaStr > horaCierre) {
+      const nomDia = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][diaSemana];
+      return { 
+        valido: false, 
+        mensaje: `Nuestro horario de atención los ${nomDia}s en Pietra Cucina es de ${horaApertura} a ${horaCierre} hs. Por favor elige una hora dentro del servicio.` 
+      };
+    }
+
+    // 3. Bloqueo de horas pasadas para la fecha de HOY
+    if (fechaStr === this.todayDate) {
+      const ahora = new Date();
+      const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+      if (horaStr <= horaActual) {
+        return { valido: false, mensaje: 'No puedes reservar para una hora que ya ha pasado hoy. Por favor elige una hora posterior.' };
+      }
+    }
+
+    return { valido: true, mensaje: '' };
+  }
+
   async buscarMesaDisponible(personasRequeridas: number): Promise<number> {
     try {
-      // 1. Obtenemos todas las reservas para validar disponibilidad real
       const resp = await fetch(`${this.BASE_URL}/api/pietra/reservas`);
       const todasLasReservas = await resp.json();
 
-      // 2. Filtramos únicamente las reservaciones activas de esta fecha específica
       const ocupadasHoy = todasLasReservas.filter((r: any) => 
         r.fecha === this.fecha && 
         r.estado !== 'finalizada' && 
@@ -140,21 +181,32 @@ export class ReservarPietraPage implements OnInit {
       );
       const idsMesasOcupadas = ocupadasHoy.map((r: any) => r.idMesa.toString());
 
-      // 3. Obtenemos las mesas asignadas a esta zona
       const mesasDeZona = this.restauranteLayout[this.zona] || [];
 
-      // A. Buscamos primero la mesa ideal que quepa el número de personas (PAX)
+      // Helper para comprobar si una mesa (o cualquiera de sus componentes fusionados) está ocupada
+      const mesaEstaOcupada = (m: any) => {
+        const mIdStr = m.id.toString();
+        if (idsMesasOcupadas.includes(mIdStr)) return true;
+        if (m.displayId && idsMesasOcupadas.includes(m.displayId.toString())) return true;
+        if (m.isMerged) {
+          if (m.displayId) {
+            const subIds = m.displayId.split('+').map((s: string) => s.trim());
+            if (subIds.some((s: string) => idsMesasOcupadas.includes(s))) return true;
+          }
+          if (m.originalTables && Array.isArray(m.originalTables)) {
+            if (m.originalTables.some((orig: any) => idsMesasOcupadas.includes(orig.id.toString()))) return true;
+          }
+        }
+        return false;
+      };
+
       const mesaIdeal = mesasDeZona.find((m: any) => 
-        m.c >= personasRequeridas && 
-        !idsMesasOcupadas.includes(m.id.toString())
+        m.c >= personasRequeridas && !mesaEstaOcupada(m)
       );
 
       if (mesaIdeal) return mesaIdeal.id;
 
-      // B. Si no hay ideal, asignamos cualquier mesa libre en la zona
-      const cualquierMesaLibre = mesasDeZona.find((m: any) => 
-        !idsMesasOcupadas.includes(m.id.toString())
-      );
+      const cualquierMesaLibre = mesasDeZona.find((m: any) => !mesaEstaOcupada(m));
 
       if (cualquierMesaLibre) return cualquierMesaLibre.id;
 
@@ -162,16 +214,14 @@ export class ReservarPietraPage implements OnInit {
       console.error('Error en el algoritmo de asignación de mesa:', error);
     }
 
-    // C. Si la base de datos está vacía, asignamos la mesa 100 de Pietra de respaldo
     const mesasRespaldo = this.restauranteLayout[this.zona] || [];
     return mesasRespaldo.length > 0 ? mesasRespaldo[0].id : 100;
   }
 
-  // Confirmar reservación y guardar en MySQL
   async confirmarReservacion() {
     const regexTexto = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
     const regexEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-    const regexTel = /^[0-9]+$/; // Expresión estricta: solo dígitos
+    const regexTel = /^[0-9]+$/;
 
     // 1. Validaciones requeridas de existencia
     if (!this.nombre.trim() || !this.apellido.trim() || !this.fecha || !this.hora) {
@@ -179,34 +229,39 @@ export class ReservarPietraPage implements OnInit {
       return;
     }
 
-    // 2. Validación de formato de texto (Evitar inyecciones SQL o scripts extraños)
+    // 2. Validación estricta de Horarios Oficiales y Horas Pasadas
+    const checkHorario = this.validarHorarioServicio(this.fecha, this.hora);
+    if (!checkHorario.valido) {
+      alert(`⚠️ ${checkHorario.mensaje}`);
+      return;
+    }
+
+    // 3. Validación de formato de texto
     if (!regexTexto.test(this.nombre) || !regexTexto.test(this.apellido)) {
       alert('Tu Nombre y Apellido solo deben contener letras.');
       return;
     }
 
-    // 3. Validación ampliada de comensales (PAX de 1 a 50)
+    // 4. Validación de comensales
     const pax = Number(this.personas);
     if (isNaN(pax) || pax < 1 || pax > 50) {
       alert('El número de personas debe ser un valor numérico entre 1 y 50.');
       return;
     }
 
-    // 4. Validación opcional de Teléfono estrictamente numérico
+    // 5. Validación opcional de Teléfono
     if (this.telefono.trim() && (!regexTel.test(this.telefono) || this.telefono.length < 8 || this.telefono.length > 15)) {
       alert('El número de teléfono debe contener únicamente dígitos numéricos (entre 8 y 15 números).');
       return;
     }
 
-    // 5. Validación opcional de Email (Crucial para Nodemailer)
+    // 6. Validación opcional de Email
     if (this.email.trim() && !regexEmail.test(this.email)) {
       alert('Por favor, ingresa una dirección de correo electrónico válida (ejemplo@correo.com).');
       return;
     }
 
-    // 6. Ejecutamos el algoritmo de auto-asignación de mesa
     const idMesaAsignada = await this.buscarMesaDisponible(pax);
-
     const nombreCompleto = `${this.nombre.trim()} ${this.apellido.trim()}`;
 
     const nuevaReserva = {
@@ -214,13 +269,14 @@ export class ReservarPietraPage implements OnInit {
       fecha: this.fecha,
       hora: this.hora,
       zona: this.zona,
-      idMesa: idMesaAsignada.toString(), // Mesa asignada de forma asíncrona
+      idMesa: idMesaAsignada.toString(),
       nombre: nombreCompleto,
       personas: pax.toString(),
       telefono: this.telefono.trim() || null,
       email: this.email.trim() || null,
       nota: this.nota.trim() || null,
-      estado: 'reservada' 
+      estado: 'reservada',
+      isNewRecord: true
     };
 
     try {
@@ -234,14 +290,14 @@ export class ReservarPietraPage implements OnInit {
       const data = await response.json();
 
       if (data.success) {
-        alert(` ¡Reserva confirmada con éxito!\nTe hemos asignado automáticamente la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmación enviada a: ${this.email || 'tu correo'}`);
+        alert(`¡Reserva confirmada con éxito en Pietra Cucina!\nTe hemos asignado la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmación enviada a: ${this.email || 'tu correo'}`);
         this.limpiarFormulario();
       } else {
-        alert(' Error al procesar tu registro. Por favor vuelve a intentarlo.');
+        alert('Error al procesar tu registro. Por favor vuelve a intentarlo.');
       }
     } catch (e) {
       console.error('Error al enviar la reserva:', e);
-      alert(' No se pudo conectar al servidor de reservas. Inténtalo de nuevo más tarde.');
+      alert('No se pudo conectar al servidor de reservas. Inténtalo de nuevo más tarde.');
     }
   }
 

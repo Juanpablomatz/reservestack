@@ -20,6 +20,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// 🔑 Contraseña dinámica del Administrador en memoria (Inicia por defecto en 'hostess2026')
+let activeAdminPassword = process.env.ADMIN_PASS || 'hostess2026';
+
 // =================================================================
 // CONFIGURACIÓN DE CORREO ELECTRÓNICO SEGURA (NODEMAILER + .ENV)
 // =================================================================
@@ -30,6 +33,9 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS || 'nswb ombp jupy kvpu'                  
   }
 });
+
+// Almacenamiento temporal en memoria de los PINs de recuperación (Válidos por 10 min)
+const recoveryPins = new Map();
 
 // 🎨 MAPA DE NOMBRES Y COLORES CORPORATIVOS POR RESTAURANTE
 const TEMAS_RESTAURANTES = {
@@ -46,7 +52,8 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
 
   const infoRest = TEMAS_RESTAURANTES[idRestaurante] || { nombre: nombreRestaurante, color: '#d4af37' };
   const colorTema = infoRest.color;
-  const urlCancelacion = `http://localhost:3000/api/reservas/cancelar-cliente?id=${reserva.id}&restaurante=${idRestaurante}`;
+  const hostBase = process.env.BASE_URL || `http://localhost:${PORT}`;
+  const urlCancelacion = `${hostBase}/api/reservas/cancelar-cliente?id=${reserva.id}&restaurante=${idRestaurante}`;
 
   let asunto = '';
   let contenidoHtml = '';
@@ -85,24 +92,9 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
       </div>
     `;
   } 
-  // 2️⃣ CORREO B: LLEGADA / MESA LISTA (CON COLOR CORPORATIVO Y SIN BOTÓN)
-  else if (tipo === 'llegada') {
-    asunto = `¡Tu Mesa está Lista! 🍽️ - Bienvenid@ a ${infoRest.nombre}`;
-    contenidoHtml = `
-      <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #0d1117; color: #ffffff; border-radius: 12px; border: 2px solid ${colorTema};">
-        <div style="text-align: center; border-bottom: 2px solid ${colorTema}; padding-bottom: 20px; margin-bottom: 25px;">
-          <h1 style="color: ${colorTema}; margin: 0; font-size: 28px; font-family: 'Times New Roman', serif;">${infoRest.nombre.toUpperCase()}</h1>
-          <p style="color: ${colorTema}; margin: 5px 0 0 0; font-size: 11px; text-transform: uppercase;">¡Mesa Asignada y Lista!</p>
-        </div>
-        <p style="font-size: 15px; color: #9faec0;">Hola <strong style="color: #ffffff;">${reserva.nombre}</strong>,</p>
-        <p style="font-size: 15px; color: #9faec0;">¡Nos alegra tenerte con nosotros! Tu <b>Mesa ${reserva.idMesa}</b> en la zona <b>${reserva.zona}</b> ha sido asignada y te estamos esperando.</p>
-        <p style="text-align: center; color: ${colorTema}; font-weight: bold; font-size: 16px; margin-top: 25px;">¡Que disfrutes tu experiencia gastronómica!</p>
-      </div>
-    `;
-  } 
-  // 3️⃣ CORREO C: CANCELACIÓN POR TOLERANCIA / NO-SHOW (CON COLOR CORPORATIVO Y SIN BOTÓN)
-  else if (tipo === 'noshow') {
-    asunto = `Aviso de Cancelación por Tolerancia (15 min) - ${infoRest.nombre}`;
+  // 2️⃣ CORREO B: CANCELACIÓN POR TOLERANCIA / NO-SHOW / CANCELAR
+  else if (tipo === 'noshow' || tipo === 'cancelar') {
+    asunto = `Aviso de Cancelación de Reserva - ${infoRest.nombre}`;
     contenidoHtml = `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #0d1117; color: #ffffff; border-radius: 12px; border: 2px solid ${colorTema};">
         <div style="text-align: center; border-bottom: 2px solid ${colorTema}; padding-bottom: 20px; margin-bottom: 25px;">
@@ -110,8 +102,8 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
           <p style="color: ${colorTema}; margin: 5px 0 0 0; font-size: 11px; text-transform: uppercase;">Aviso de Cancelación de Reserva</p>
         </div>
         <p style="font-size: 15px; color: #9faec0;">Hola <strong style="color: #ffffff;">${reserva.nombre}</strong>,</p>
-        <p style="font-size: 15px; color: #9faec0;">Lamentamos informarte que tu reservación programada para hoy a las <b>${reserva.hora} hs</b> ha sido cancelada debido a que se superó el límite de tolerancia de <b>15 minutos</b>.</p>
-        <p style="font-size: 13px; color: #768f9e; text-align: center; margin-top: 25px;">Si estás cerca o deseas agendar nuevamente, por favor comunícate con nuestro equipo de recepción.</p>
+        <p style="font-size: 15px; color: #9faec0;">Te informamos que tu reservación programada para la fecha <b>${reserva.fecha}</b> a las <b>${reserva.hora} hs</b> ha sido cancelada en nuestro sistema.</p>
+        <p style="font-size: 13px; color: #768f9e; text-align: center; margin-top: 25px;">Si deseas agendar nuevamente en el futuro, por favor visita nuestra plataforma o comunícate con recepción.</p>
       </div>
     `;
   } else {
@@ -126,11 +118,15 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
   };
 
   try {
-    console.log(` Envíando correo [${tipo.toUpperCase()}] a: ${reserva.email}...`);
+    console.log(`📧 Enviando correo [${tipo.toUpperCase()}] a: ${reserva.email}...`);
     await transporter.sendMail(mailOptions);
-    console.log(` Correo [${tipo.toUpperCase()}] enviado con éxito a: ${reserva.email}`);
+    console.log(`✅ Correo [${tipo.toUpperCase()}] enviado con éxito a: ${reserva.email}`);
   } catch (err) {
-    console.log(` Error Nodemailer (no bloqueante): ${err.message}`);
+    console.log(`⚠️ Error Nodemailer (no bloqueante): ${err.message}`);
+    console.log(`📩 [MODO DE RESPALDO DE CORREO LOCAL]`);
+    console.log(`   Para: ${reserva.email}`);
+    console.log(`   Asunto: ${asunto}`);
+    console.log(`   URL de Cancelación directa: ${urlCancelacion}`);
   }
 }
 
@@ -147,22 +143,23 @@ app.get('/api/reservas/cancelar-cliente', async (req, res) => {
   }
 
   try {
-    // 1. Actualizar estado a 'cancelada' en MySQL
     const query = `UPDATE reservas SET estado = 'cancelada' WHERE id_reserva = ? AND id_restaurante = ?`;
     await db.query(query, [idReserva, idRestaurante]);
 
-    // 2. Transmitir evento Socket.IO para actualizar el Admin de la Hostess en TIEMPO REAL
     if (idRestaurante === 1) {
       const reservasActualizadas = await obtenerReservasPietra();
       io.emit('actualizar_pietra', reservasActualizadas);
+      io.emit('actualizar_reservas', reservasActualizadas);
     } else {
       const reservasActualizadas = await obtenerReservasPorRestaurante(idRestaurante);
+      io.emit('actualizar_rosa', reservasActualizadas);
+      io.emit('actualizar_llorona', reservasActualizadas);
+      io.emit('actualizar_reservas', reservasActualizadas);
       io.to(`restaurante_${idRestaurante}`).emit('actualizar_rosa', reservasActualizadas);
       io.to(`restaurante_${idRestaurante}`).emit('actualizar_llorona', reservasActualizadas);
       io.to(`restaurante_${idRestaurante}`).emit('actualizar_reservas', reservasActualizadas);
     }
 
-    // 3. Responder al navegador del cliente con una pantalla limpia de confirmación
     res.send(`
       <!DOCTYPE html>
       <html lang="es">
@@ -195,35 +192,153 @@ app.get('/api/reservas/cancelar-cliente', async (req, res) => {
 });
 
 // =================================================================
-// 🛡️ ENDPOINT DE AUTENTICACIÓN / LOGIN HOSTESS
+// 🛡️ ENDPOINT DE AUTENTICACIÓN / LOGIN HOSTESS (CON SOPORTE DE EMAIL Y DUALIDAD)
 // =================================================================
 app.post('/api/auth/login', async (req, res) => {
-  const { usuario, password } = req.body;
+  const usuarioOEmail = (req.body.usuario || req.body.email || '').toLowerCase().trim();
+  const password = (req.body.password || '').trim();
+
   try {
-    if ((usuario === 'admin' || usuario === 'hostess') && (password === 'admin123' || password === 'hostess2026')) {
+    // 🔑 Acepta tu correo electrónico corporativo o los usuarios por defecto con la contraseña activa
+    if (
+      (usuarioOEmail === 'juan2005pablomart@gmail.com' || usuarioOEmail === 'admin' || usuarioOEmail === 'hostess') && 
+      (password === activeAdminPassword)
+    ) {
       return res.json({
         success: true,
         token: 'token_reservestack_hostess_valid_2026',
-        usuario: { nombre: 'Hostess Principal', rol: 'admin' }
+        usuario: { nombre: 'Hostess Principal', rol: 'admin', email: usuarioOEmail }
       });
     }
 
+    // Comprueba también en MySQL si existe la tabla usuarios
     try {
-      const [rows] = await db.query('SELECT * FROM usuarios WHERE (usuario = ? OR email = ?) AND password = ?', [usuario, usuario, password]);
+      const [rows] = await db.query('SELECT * FROM usuarios WHERE (usuario = ? OR email = ?) AND password = ?', [usuarioOEmail, usuarioOEmail, password]);
       if (rows && rows.length > 0) {
         const user = rows[0];
         return res.json({
           success: true,
           token: 'token_reservestack_hostess_valid_2026',
-          usuario: { nombre: user.nombre || user.usuario, rol: user.rol || 'hostess' }
+          usuario: { nombre: user.nombre || user.usuario, rol: user.rol || 'hostess', email: user.email }
         });
       }
     } catch (dbErr) {}
 
-    res.status(401).json({ success: false, message: 'Usuario o contraseña incorrectos' });
+    res.status(401).json({ success: false, message: 'Correo o contraseña incorrectos' });
   } catch (error) {
     console.error('Error en /api/auth/login:', error);
     res.status(500).json({ success: false, message: 'Error interno en autenticación' });
+  }
+});
+
+// =================================================================
+// 🔑 ENDPOINTS DE RECUPERACIÓN DE CONTRASEÑA VÍA PIN POR CORREO
+// =================================================================
+
+// 1. Solicitar PIN de recuperación
+app.post('/api/auth/recuperar-password', async (req, res) => {
+  const { email } = req.body;
+  const correoAdmin = process.env.EMAIL_USER || 'juan2005pablomart@gmail.com';
+
+  if (!email || email.trim() === '') {
+    return res.status(400).json({ success: false, message: 'Debes proporcionar un correo electrónico válido' });
+  }
+
+  const emailLower = email.toLowerCase().trim();
+
+  try {
+    const pin = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // Válido por 10 minutos
+
+    recoveryPins.set(emailLower, { pin, expiresAt });
+
+    const mailOptions = {
+      from: `"ReserveStack Seguridad" <${correoAdmin}>`,
+      to: emailLower,
+      subject: '🔑 PIN de Recuperación de Contraseña - ReserveStack',
+      html: `
+        <div style="font-family: 'Segoe UI', sans-serif; max-width: 500px; margin: 0 auto; padding: 30px; background-color: #0d1117; color: #ffffff; border-radius: 12px; border: 2px solid #e5007e;">
+          <h2 style="color: #e5007e; text-align: center; margin-top: 0; font-family: 'Times New Roman', serif;">RESERVESTACK ADMIN</h2>
+          <p style="font-size: 14px; color: #9faec0;">Hola,</p>
+          <p style="font-size: 14px; color: #9faec0;">Has solicitado restablecer la contraseña de tu cuenta de administrador. Utiliza el siguiente PIN de seguridad:</p>
+          
+          <div style="background-color: #161f2c; border: 2px dashed #e5007e; border-radius: 8px; padding: 15px; text-align: center; margin: 20px 0;">
+            <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #e5007e;">${pin}</span>
+          </div>
+
+          <p style="font-size: 12px; color: #768f9e; text-align: center;">Este PIN es válido únicamente por <b>10 minutos</b>. Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
+        </div>
+      `
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`🔐 PIN de recuperación generado [${pin}] y enviado a: ${emailLower}`);
+
+    res.json({ success: true, message: 'Te hemos enviado un PIN de 6 dígitos a tu correo electrónico' });
+  } catch (error) {
+    console.error('Error al enviar PIN de recuperación:', error);
+    res.status(500).json({ success: false, message: 'No se pudo enviar el correo de recuperación. Revisa tu conexión.' });
+  }
+});
+
+// 2. Verificar PIN ingresado
+app.post('/api/auth/verificar-pin', (req, res) => {
+  const { email, pin } = req.body;
+  if (!email || !pin) {
+    return res.status(400).json({ success: false, message: 'Email y PIN son requeridos' });
+  }
+
+  const emailLower = email.toLowerCase().trim();
+  const registro = recoveryPins.get(emailLower);
+
+  if (!registro) {
+    return res.status(400).json({ success: false, message: 'No hay ninguna solicitud de recuperación activa para este correo' });
+  }
+
+  if (Date.now() > registro.expiresAt) {
+    recoveryPins.delete(emailLower);
+    return res.status(400).json({ success: false, message: 'El PIN ha expirado. Solicita uno nuevo' });
+  }
+
+  if (registro.pin !== pin.trim()) {
+    return res.status(400).json({ success: false, message: 'El PIN ingresado es incorrecto' });
+  }
+
+  res.json({ success: true, message: 'PIN verificado con éxito' });
+});
+
+// 3. Restablecer la contraseña
+app.post('/api/auth/restablecer-password', async (req, res) => {
+  const { email, pin, nuevaPassword } = req.body;
+
+  if (!email || !pin || !nuevaPassword || nuevaPassword.trim().length < 6) {
+    return res.status(400).json({ success: false, message: 'La nueva contraseña debe tener al menos 6 caracteres' });
+  }
+
+  const emailLower = email.toLowerCase().trim();
+  const registro = recoveryPins.get(emailLower);
+
+  if (!registro || registro.pin !== pin.trim() || Date.now() > registro.expiresAt) {
+    return res.status(400).json({ success: false, message: 'PIN inválido o expirado' });
+  }
+
+  try {
+    // ⚡ 1. ACTUALIZA LA CONTRASEÑA EN MEMORIA DE INMEDIATO (Descarta la clave anterior)
+    activeAdminPassword = nuevaPassword.trim();
+
+    // 2. Intenta actualizar también en MySQL si existe la tabla usuarios
+    try {
+      const query = `UPDATE usuarios SET password = ? WHERE email = ? OR usuario = 'admin' OR usuario = 'hostess'`;
+      await db.query(query, [nuevaPassword.trim(), emailLower]);
+    } catch (dbError) {}
+
+    recoveryPins.delete(emailLower);
+
+    console.log(`✅ Contraseña del Administrador restablecida dinámicamente a: [${nuevaPassword.trim()}]`);
+    res.json({ success: true, message: '¡Tu contraseña ha sido actualizada con éxito! Ya puedes iniciar sesión.' });
+  } catch (error) {
+    console.error('Error al restablecer contraseña:', error);
+    res.status(500).json({ success: false, message: 'Error interno al actualizar la contraseña' });
   }
 });
 
@@ -345,15 +460,18 @@ app.post('/api/pietra/reservas', async (req, res) => {
     ]);
 
     const reservasActualizadas = await obtenerReservasPietra();
+    
+    // 📢 Transmisión Socket.IO en tiempo real (Global + Sala)
     io.emit('actualizar_pietra', reservasActualizadas);
+    io.emit('actualizar_reservas', reservasActualizadas);
+    io.to('restaurante_1').emit('actualizar_pietra', reservasActualizadas);
 
-    // 🚀 Envío asíncrono y no bloqueante
-    if (tipoCorreo === 'llegada' || tipoCorreo === 'noshow' || tipoCorreo === 'crear') {
+    if (tipoCorreo === 'noshow' || tipoCorreo === 'cancelar' || tipoCorreo === 'crear') {
       enviarCorreoPorTipo(req.body, tipoCorreo, 'Pietra Cucina', 1).catch(e => console.error('Error correo async Pietra:', e));
     } else if (isNewRecord === true || isNewRecord === 'true') {
       enviarCorreoPorTipo(req.body, 'crear', 'Pietra Cucina', 1).catch(e => console.error('Error correo async Pietra:', e));
     } else {
-      console.log('ℹ Edición o movimiento de mesa. Correo OMITIDO.');
+      console.log('ℹ Cambio de estado sin correo adicional.');
     }
 
     res.json({ success: true, message: 'Reserva registrada en MySQL con éxito' });
@@ -477,20 +595,22 @@ app.post('/api/restaurantes/:idRestaurante/reservas', async (req, res) => {
 
     const reservasActualizadas = await obtenerReservasPorRestaurante(idRestaurante);
     
-    // 📢 Transmisión Socket.IO multicanal para actualizar Rosa o Llorona en tiempo real
+    // 📢 Transmisión Socket.IO multicanal global + sala en tiempo real
+    io.emit('actualizar_rosa', reservasActualizadas);
+    io.emit('actualizar_llorona', reservasActualizadas);
+    io.emit('actualizar_reservas', reservasActualizadas);
     io.to(`restaurante_${idRestaurante}`).emit('actualizar_rosa', reservasActualizadas);
     io.to(`restaurante_${idRestaurante}`).emit('actualizar_llorona', reservasActualizadas);
     io.to(`restaurante_${idRestaurante}`).emit('actualizar_reservas', reservasActualizadas);
 
-    const nombreRestaurante = NOMBRES_RESTAURANTES[idRestaurante] || 'ReserveStack';
+    const nombreRestaurante = TEMAS_RESTAURANTES[idRestaurante] ? TEMAS_RESTAURANTES[idRestaurante].nombre : 'ReserveStack';
 
-    // 🚀 Envío asíncrono y no bloqueante
-    if (tipoCorreo === 'llegada' || tipoCorreo === 'noshow' || tipoCorreo === 'crear') {
+    if (tipoCorreo === 'noshow' || tipoCorreo === 'cancelar' || tipoCorreo === 'crear') {
       enviarCorreoPorTipo(req.body, tipoCorreo, nombreRestaurante, idRestaurante).catch(e => console.error('Error correo async:', e));
     } else if (isNewRecord === true || isNewRecord === 'true') {
       enviarCorreoPorTipo(req.body, 'crear', nombreRestaurante, idRestaurante).catch(e => console.error('Error correo async:', e));
     } else {
-      console.log('ℹ Edición o movimiento de mesa. Correo OMITIDO.');
+      console.log('ℹ Cambio de estado sin correo adicional.');
     }
 
     res.json({ success: true, message: 'Reserva registrada en MySQL con éxito' });

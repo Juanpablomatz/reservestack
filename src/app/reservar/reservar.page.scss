@@ -138,12 +138,20 @@ ion-content.fondo-pantalla {
   --padding-bottom: 0px !important;
   --highlight-color-focused: transparent !important;
   
+  color: #ffffff !important;
+  caret-color: #e5007e !important;
   flex: 1;
   height: 100%;
   margin: 0;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+
+  input, textarea {
+    color: #ffffff !important;
+    caret-color: #e5007e !important;
+    -webkit-text-fill-color: #ffffff !important;
+  }
 }
 
 /* Ajustes de Ionic Select */

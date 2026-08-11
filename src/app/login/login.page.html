@@ -6,11 +6,11 @@
       </ion-card-header>
       <ion-card-content>
         <div class="form-group">
-          <ion-input type="text" placeholder="Usuario Maestro" class="input-item" [(ngModel)]="usuario"></ion-input>
+          <ion-input type="email" placeholder="Correo Electrónico" class="input-item" [(ngModel)]="usuario"></ion-input>
           <ion-input type="password" placeholder="Contraseña" class="input-item" [(ngModel)]="password"></ion-input>
         </div>
 
-        <!-- Mensaje de error si la contraseña es incorrecta -->
+        <!-- Mensaje de error si la contraseña o correo son incorrectos -->
         <p *ngIf="errorMessage" style="color: #ff6b6b; font-size: 12px; margin-top: 15px; font-weight: bold; margin-bottom: 0;">
           {{ errorMessage }}
         </p>
@@ -18,7 +18,63 @@
         <ion-button expand="block" class="btn-dorado" (click)="entrarAlSistema()" [disabled]="cargando">
           {{ cargando ? 'VERIFICANDO...' : 'ENTRAR' }}
         </ion-button>
+
+        <!-- 🔑 ENLACE PARA RECUPERAR CONTRASEÑA -->
+        <span class="enlace-olvide" (click)="abrirModalRecuperar()">¿Olvidaste tu contraseña?</span>
       </ion-card-content>
     </ion-card>
+  </div>
+
+  <!-- =========================================================
+       🔑 MODAL DE RECUPERACIÓN DE CONTRASEÑA VÍA PIN POR CORREO
+       ======================================================== -->
+  <div *ngIf="modalRecuperarAbierto" class="modal-overlay">
+    <div class="modal-card">
+      <button class="modal-close-btn" (click)="cerrarModalRecuperar()">&times;</button>
+
+      <div class="modal-header-recuperar">
+        <h2>RECUPERAR ACCESO</h2>
+        <span class="paso-badge">Paso {{ pasoRecuperacion }} de 3</span>
+      </div>
+
+      <!-- MENSAJES DE ESTADO -->
+      <div *ngIf="recuperarMensaje" class="mensaje-exito">{{ recuperarMensaje }}</div>
+      <div *ngIf="recuperarError" class="mensaje-error">{{ recuperarError }}</div>
+
+      <!-- PASO 1: SOLICITAR EMAIL -->
+      <div *ngIf="pasoRecuperacion === 1">
+        <p class="subtexto-instruccion">
+          Ingresa tu correo electrónico registrado para enviarte un PIN de seguridad de 6 dígitos.
+        </p>
+        <ion-input type="email" placeholder="correo@ejemplo.com" class="input-item" [(ngModel)]="emailRecuperar"></ion-input>
+        <ion-button expand="block" class="btn-dorado" (click)="solicitarPin()" [disabled]="recuperandoCargando">
+          {{ recuperandoCargando ? 'ENVIANDO...' : 'ENVIAR PIN' }}
+        </ion-button>
+      </div>
+
+      <!-- PASO 2: INGRESAR PIN -->
+      <div *ngIf="pasoRecuperacion === 2">
+        <p class="subtexto-instruccion">
+          Ingresa el PIN de 6 dígitos que enviamos a tu correo electrónico.
+        </p>
+        <ion-input type="text" placeholder="123456" maxlength="6" class="pin-input" [(ngModel)]="pinRecuperar"></ion-input>
+        <ion-button expand="block" class="btn-dorado" (click)="verificarPin()" [disabled]="recuperandoCargando">
+          {{ recuperandoCargando ? 'VERIFICANDO...' : 'VERIFICAR PIN' }}
+        </ion-button>
+      </div>
+
+      <!-- PASO 3: NUEVA CONTRASEÑA -->
+      <div *ngIf="pasoRecuperacion === 3">
+        <p class="subtexto-instruccion">
+          Crea tu nueva contraseña de acceso corporativo (mínimo 6 caracteres).
+        </p>
+        <ion-input type="password" placeholder="Nueva Contraseña" class="input-item" [(ngModel)]="nuevaPassword"></ion-input>
+        <ion-input type="password" placeholder="Confirmar Nueva Contraseña" class="input-item" [(ngModel)]="confirmarNuevaPassword"></ion-input>
+        <ion-button expand="block" class="btn-dorado" (click)="restablecerPassword()" [disabled]="recuperandoCargando">
+          {{ recuperandoCargando ? 'ACTUALIZANDO...' : 'CAMBIAR CONTRASEÑA' }}
+        </ion-button>
+      </div>
+
+    </div>
   </div>
 </ion-content>

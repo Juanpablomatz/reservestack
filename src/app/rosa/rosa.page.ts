@@ -1,7 +1,8 @@
-import { Component, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, AfterViewInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Chart, registerables } from 'chart.js';
+import { AuthService } from '../services/auth.service';
 
 Chart.register(...registerables);
 
@@ -29,7 +30,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
   todasLasReservas: any[] = [];
   
-  // 🎯 FIX DE FECHA LOCAL: Siempre inicia estrictamente en la fecha HOY local del usuario
   fechaSeleccionada: string = this.obtenerFechaActualLocal();
   zonaActiva: string = 'Terraza'; 
   
@@ -52,12 +52,50 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
   readonly BASE_URL = 'http://localhost:3000';
 
-  constructor() {
+  constructor(private authService: AuthService, private ngZone: NgZone) {
     this.disenoMaestro = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
     this.cargarLayoutPorFecha(this.fechaSeleccionada);
   }
 
-  // 🗓️ HELPER: Obtiene la fecha YYYY-MM-DD en la zona horaria local real sin desfase UTC
+  cerrarSesion() {
+    this.authService.logout();
+  }
+
+  // 🔔 SINTETIZADOR NATIVO DE SONIDO DE CAMPANADA (CHIME) PARA NUEVAS RESERVAS
+  reproducirSonidoCampana() {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+
+      // Nota 1 (Aguda)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      gain1.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.8);
+
+      // Nota 2 (Campanada armónica)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
+      gain2.gain.setValueAtTime(0.4, ctx.currentTime + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(ctx.currentTime + 0.15);
+      osc2.stop(ctx.currentTime + 1.2);
+    } catch (e) {
+      console.warn('Audio Context no disponible.', e);
+    }
+  }
+
   obtenerFechaActualLocal(): string {
     const hoy = new Date();
     const year = hoy.getFullYear();
@@ -98,7 +136,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     localStorage.setItem(keyFecha, JSON.stringify(this.restaurante));
   }
 
-  // 🎯 GUARDA EL NUEVO DISEÑO FÍSICO (NUEVAS MESAS / MOVIDAS / FUSIONADAS) EN MYSQL Y LOCALSTORAGE PARA TODOS LOS DÍAS
   async guardarDisenoPermanente() {
     const layoutPermanente = JSON.parse(JSON.stringify(this.restaurante));
     localStorage.setItem('rosa_diseno_permanente', JSON.stringify({ desde: this.fechaSeleccionada, layout: layoutPermanente }));
@@ -113,7 +150,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     this.disenoMaestro = JSON.parse(JSON.stringify(layoutPermanente));
     this.guardarLayoutFechaActual();
 
-    // Actualiza también los layouts locales de fechas presentes y futuras
     const prefijo = 'rosa_layout_';
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
@@ -166,7 +202,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       alert('✅ ¡Nueva distribución de mesas guardada para TODOS los días con éxito!');
     } catch (e) {
       console.error('❌ Error al guardar diseño permanente Rosa Mexicano:', e);
-      // Respaldo en memoria local si no hay conexión
       this.disenoMaestro = JSON.parse(JSON.stringify(this.restaurante));
       this.guardarLayoutFechaActual();
     }
@@ -221,13 +256,34 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     try {
       this.socket = io(this.BASE_URL);
       this.socket.emit('join_restaurante', 2);
+
+      // ⚡ NgZone + Campana Inteligente (Solo suena si la nueva reserva es para la fecha en pantalla)
       this.socket.on('actualizar_rosa', (r: any[]) => { 
-        this.todasLasReservas = r; 
-        this.actualizarVistaCompleta(); 
+        this.ngZone.run(() => {
+          const prevHoy = this.todasLasReservas.filter(x => x.fecha === this.fechaSeleccionada).length;
+          const nuevHoy = r.filter(x => x.fecha === this.fechaSeleccionada).length;
+
+          if (nuevHoy > prevHoy) {
+            this.reproducirSonidoCampana(); // 🔔 ¡Campanada activa solo si es para la fecha en pantalla!
+          }
+
+          this.todasLasReservas = r; 
+          this.actualizarVistaCompleta(); 
+        });
       });
+
       this.socket.on('actualizar_reservas', (r: any[]) => {
-        this.todasLasReservas = r;
-        this.actualizarVistaCompleta();
+        this.ngZone.run(() => {
+          const prevHoy = this.todasLasReservas.filter(x => x.fecha === this.fechaSeleccionada).length;
+          const nuevHoy = r.filter(x => x.fecha === this.fechaSeleccionada).length;
+
+          if (nuevHoy > prevHoy) {
+            this.reproducirSonidoCampana();
+          }
+
+          this.todasLasReservas = r;
+          this.actualizarVistaCompleta();
+        });
       });
     } catch(e) {}
 
@@ -348,7 +404,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   }
 
   configurarOpcionesEditor() {
-    // 🎯 BOTÓN AGREGAR MESA PERMANENTE
     document.getElementById('btn-add-mesa')?.addEventListener('click', () => {
       const numMesa = prompt('Escribe el número de la nueva mesa para Rosa Mexicano:');
       if (!numMesa) return;
@@ -367,11 +422,9 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
       const nuevaMesaObj = { id: numId, c: finalCap, x: 45, y: 40 };
 
-      // Agregar al mapa activo del día
       if (!this.restaurante[this.zonaActiva]) this.restaurante[this.zonaActiva] = [];
       this.restaurante[this.zonaActiva].push(nuevaMesaObj);
 
-      // 🎯 Agregar también al diseño maestro en memoria para que no desaparezca al cambiar de zona o fecha
       if (!this.disenoMaestro) this.disenoMaestro = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
       if (!this.disenoMaestro[this.zonaActiva]) this.disenoMaestro[this.zonaActiva] = [];
       const yaExisteMaestro = this.disenoMaestro[this.zonaActiva].some((m: any) => m.id === numId);
@@ -550,16 +603,27 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         if (isSelectedEditor) {
           divMesa.querySelector('.btn-edit-pax')?.addEventListener('click', (e) => {
             e.stopPropagation();
-            const nuevaCap = prompt(`Cambiar capacidad para la Mesa ${textoNumero} (Mínimo 1, Máximo 50):`, mesa.c.toString());
+            const nuevoId = prompt(`Nuevo número/etiqueta para la Mesa ${textoNumero}:`, textoNumero.toString());
+            if (nuevoId && nuevoId.trim() !== '') {
+              const valTrim = nuevoId.trim();
+              const numInt = parseInt(valTrim, 10);
+              if (!isNaN(numInt)) {
+                mesa.id = numInt;
+                mesa.displayId = valTrim;
+              } else {
+                mesa.displayId = valTrim;
+              }
+            }
+            const nuevaCap = prompt(`Cambiar capacidad de personas (Mínimo 1, Máximo 50):`, mesa.c.toString());
             if (nuevaCap) {
               let capNum = parseInt(nuevaCap, 10);
               if (!isNaN(capNum) && capNum > 0) {
                 if (capNum > 50) capNum = 50; 
                 mesa.c = capNum;
-                this.guardarLayoutFechaActual();
-                this.dibujarMesas(this.zonaActiva);
               }
             }
+            this.guardarLayoutFechaActual();
+            this.dibujarMesas(this.zonaActiva);
           });
 
           divMesa.querySelector('.btn-unlink-mesa')?.addEventListener('click', (e) => {
@@ -721,16 +785,19 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
       if (arr.length === 1) {
         const res = arr[0];
-        elemento.classList.add(res.estado);
+        const estadoClase = res.estado === 'confirmada' ? 'reservada' : res.estado;
+        elemento.classList.add(estadoClase);
         let nombreCorto = res.nombre ? res.nombre.split(' ')[0].substring(0, 8) : 'Cliente';
         elemento.innerHTML = `<span class="res-nombre">${nombreCorto}</span><span class="res-pax">${res.personas}p</span>`;
       } else {
-        const tieneReservada = arr.some((r: any) => r.estado === 'reservada');
+        const tieneReservada = arr.some((r: any) => r.estado === 'reservada' || r.estado === 'confirmada');
         const tieneOcupada = arr.some((r: any) => r.estado === 'ocupada');
+        
         if (tieneReservada && tieneOcupada) elemento.classList.add('mixta');
         else if (tieneReservada) elemento.classList.add('reservada-doble');
         else if (tieneOcupada) elemento.classList.add('ocupada-doble');
         else elemento.classList.add('bloqueada');
+        
         const totalPax = arr.reduce((sum: number, r: any) => sum + parseInt(r.personas || 0), 0);
         elemento.innerHTML = `<span class="res-nombre">Múltiples</span><span class="res-pax">${totalPax}p</span>`;
       }
@@ -753,7 +820,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       const item = document.createElement('div');
       item.className = 'reserva-item-sidebar';
       let borderColor = 'transparent';
-      if(res.estado === 'reservada') borderColor = 'var(--res)';
+      if(res.estado === 'reservada' || res.estado === 'confirmada') borderColor = 'var(--res)';
       if(res.estado === 'ocupada') borderColor = 'var(--occ)';
       if(res.estado === 'bloqueada') borderColor = 'var(--blo)';
       item.style.borderLeftColor = borderColor;
@@ -790,7 +857,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
   actualizarEstadisticas(reservasDelDia: any[]) {
     const ocupadas = reservasDelDia.filter(r => r.estado === 'ocupada').length;
-    const reservadas = reservasDelDia.filter(r => r.estado === 'reservada').length;
+    const reservadas = reservasDelDia.filter(r => r.estado === 'reservada' || r.estado === 'confirmada').length;
     const bloqueadas = reservasDelDia.filter(r => r.estado === 'bloqueada').length;
     
     let paxAcumulado = 0;
@@ -819,7 +886,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   ejecutarMover(idMesaNueva: any, zonaNueva: any) {
     this.modoMover = false;
     const avisoMover = document.getElementById('aviso-mover');
-    if (avisoMover) avisoMover.classList.add('oculto');
+    if (avisoMover) avisoMover.classList.remove('oculto');
     
     const res = this.todasLasReservas.find(r => Number(r.id) === Number(this.reservaAMoverId));
     if (res) {
@@ -837,7 +904,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   async gestionarClickMesa(evento: any, mesa: any, zona: string) {
     evento.stopPropagation(); 
 
-    // 🛑 1. MODO COMBINAR MESAS ROSA MEXICANO
     if (this.modoEdicion && this.modoCombinar) {
       if (!this.mesaACombinar) {
         this.mesaACombinar = mesa;
@@ -858,14 +924,12 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       return; 
     }
 
-    // 🛑 2. MODO EDICIÓN NORMAL
     if (this.modoEdicion) {
       this.mesaSeleccionadaEdicion = mesa.id;
       this.dibujarMesas(zona);
       return; 
     }
 
-    // 🟢 3. MODO NORMAL
     this.mesaSeleccionadaTemp = { id: mesa.id, zona: zona };
     const idMesa = mesa.id;
 
@@ -971,8 +1035,9 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       }
 
       if (statusBadge) {
+        const estadoClase = realRes.estado === 'confirmada' ? 'reservada' : realRes.estado;
         statusBadge.textContent = realRes.estado.toUpperCase();
-        statusBadge.className = `popover-status-badge ${realRes.estado}`;
+        statusBadge.className = `popover-status-badge ${estadoClase}`;
       }
 
       contenedorBotones.className = 'popover-actions-container popover-actions-grid';
@@ -984,14 +1049,14 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         });
       }
 
-      if (realRes.estado === 'reservada' || realRes.estado === 'ocupada') {
+      if (realRes.estado === 'reservada' || realRes.estado === 'confirmada' || realRes.estado === 'ocupada') {
         crearBotonPop('Agregar Walk-in', 'btn-walkin', 'fa-street-view', () => {
           popover.classList.add('oculto');
           document.getElementById('modal-walkin')?.classList.remove('oculto');
         });
       }
 
-      if (realRes.estado === 'reservada') {
+      if (realRes.estado === 'reservada' || realRes.estado === 'confirmada') {
         crearBotonPop('Ver Info', 'btn-info', 'fa-info-circle', () => {
           popover.classList.add('oculto');
           this.mostrarDetalleReserva(realRes);
@@ -999,7 +1064,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         crearBotonPop('Marcar Llegada', 'btn-llegada', 'fa-bell-concierge', () => {
           popover.classList.add('oculto');
           realRes.estado = 'ocupada';
-          this.guardarReservaEnServidor(realRes, 'llegada');
+          this.guardarReservaEnServidor(realRes); // Sin correo de llegada
           this.actualizarVistaCompleta();
         });
         crearBotonPop('Mover Mesa', 'btn-mover', 'fa-arrows-alt', () => {
@@ -1009,15 +1074,17 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           if (avisoMover) avisoMover.classList.remove('oculto');
           this.dibujarMesas(this.zonaActiva);
         });
-        crearBotonPop('Cancelar / No-Show', 'btn-cancelar', 'fa-trash-alt', () => {
+        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR RESERVA
+        crearBotonPop('Cancelar', 'btn-cancelar', 'fa-trash-alt', () => {
           popover.classList.add('oculto');
-          if (confirm('¿Cancelar por tolerancia de 15 min?')) {
+          if (confirm('¿Cancelar la reserva y notificar al cliente por correo?')) {
             realRes.estado = 'cancelada';
             this.guardarReservaEnServidor(realRes, 'noshow');
             this.actualizarVistaCompleta();
           }
         });
       } else if (realRes.estado === 'ocupada') {
+        // 🛡️ MESA OCUPADA: Se oculta el botón CANCELAR
         crearBotonPop('Ver Info', 'btn-info', 'fa-info-circle', () => {
           popover.classList.add('oculto');
           this.mostrarDetalleReserva(realRes);
@@ -1034,12 +1101,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           const avisoMover = document.getElementById('aviso-mover');
           if (avisoMover) avisoMover.classList.remove('oculto');
           this.dibujarMesas(this.zonaActiva);
-        });
-        crearBotonPop('Cancelar', 'btn-cancelar', 'fa-trash-alt', () => {
-          popover.classList.add('oculto');
-          realRes.estado = 'cancelada';
-          this.guardarReservaEnServidor(realRes);
-          this.actualizarVistaCompleta();
         });
       } else if (realRes.estado === 'bloqueada') {
         crearBotonPop('Desbloquear', 'btn-llegada', 'fa-unlock', () => {
@@ -1073,7 +1134,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       };
       contenedorBotones.appendChild(btnAgregarOtra);
 
-      if (arrReservas.some((res: any) => res.estado === 'reservada' || res.estado === 'ocupada')) {
+      if (arrReservas.some((res: any) => res.estado === 'reservada' || res.estado === 'confirmada' || res.estado === 'ocupada')) {
         const btnAgregarWalkin = document.createElement('button');
         btnAgregarWalkin.className = 'btn-pop-action btn-walkin';
         btnAgregarWalkin.style.marginBottom = '12px';
@@ -1090,16 +1151,20 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       arrReservas.forEach((resTemp: any) => {
         const realItem = this.todasLasReservas.find(r => Number(r.id) === Number(resTemp.id)) || resTemp;
         const cardItem = document.createElement('div');
-        cardItem.className = `multi-res-item-card ${realItem.estado}`;
+        const estadoClase = realItem.estado === 'confirmada' ? 'reservada' : realItem.estado;
+        cardItem.className = `multi-res-item-card ${estadoClase}`;
 
         let botonEstadoHtml = '';
-        if (realItem.estado === 'reservada') {
+        if (realItem.estado === 'reservada' || realItem.estado === 'confirmada') {
           botonEstadoHtml = `<button class="btn-llegada" title="Marcar Llegada"><i class="fas fa-bell-concierge"></i> Llegada</button>`;
         } else if (realItem.estado === 'ocupada') {
           botonEstadoHtml = `<button class="btn-liberar" title="Liberar Mesa"><i class="fas fa-broom"></i> Liberar</button>`;
         } else if (realItem.estado === 'bloqueada') {
           botonEstadoHtml = `<button class="btn-llegada" title="Desbloquear"><i class="fas fa-unlock"></i> Desbloquear</button>`;
         }
+
+        // 🛡️ SI ESTÁ OCUPADA O BLOQUEADA, NO SE MUESTRA BOTÓN CANCELAR
+        const mostrarBotonCancelar = realItem.estado !== 'ocupada' && realItem.estado !== 'bloqueada';
 
         cardItem.innerHTML = `
           <div class="multi-res-header">
@@ -1116,7 +1181,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
             ${botonEstadoHtml}
             <button class="btn-info" title="Ver Detalle Completo"><i class="fas fa-info-circle"></i> Info</button>
             ${realItem.estado !== 'bloqueada' ? '<button class="btn-mover"><i class="fas fa-arrows-alt"></i> Mover</button>' : ''}
-            ${realItem.estado !== 'bloqueada' ? '<button class="btn-cancelar"><i class="fas fa-trash-alt"></i> Cancelar</button>' : ''}
+            ${mostrarBotonCancelar ? '<button class="btn-cancelar"><i class="fas fa-trash-alt"></i> Cancelar</button>' : ''}
           </div>
         `;
 
@@ -1124,7 +1189,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           e.stopPropagation();
           popover.classList.add('oculto');
           realItem.estado = 'ocupada';
-          this.guardarReservaEnServidor(realItem, 'llegada');
+          this.guardarReservaEnServidor(realItem); // Sin correo de llegada
           this.actualizarVistaCompleta();
         });
 
@@ -1151,12 +1216,13 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           this.dibujarMesas(this.zonaActiva);
         });
 
+        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR DESDE MÚLTIPLES
         cardItem.querySelector('.btn-cancelar')?.addEventListener('click', (e) => {
           e.stopPropagation();
           popover.classList.add('oculto');
-          if (confirm(`¿Cancelar reserva de ${realItem.nombre}?`)) {
+          if (confirm(`¿Cancelar reserva de ${realItem.nombre} y enviar correo?`)) {
             realItem.estado = 'cancelada';
-            this.guardarReservaEnServidor(realItem);
+            this.guardarReservaEnServidor(realItem, 'noshow');
             this.actualizarVistaCompleta();
           }
         });
@@ -1226,6 +1292,8 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         if (h2) h2.textContent = 'Walk-in Rápido - Rosa Mexicano';
         const btn = document.getElementById('btn-confirmar-walkin');
         if (btn) btn.innerHTML = '<i class="fas fa-check"></i> Ocupar Mesa';
+        const inputWalkin = document.getElementById('input-pax-walkin') as HTMLInputElement;
+        if (inputWalkin) inputWalkin.value = '2';
     }
   }
 
@@ -1530,10 +1598,10 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         accionesContenedor.appendChild(btn);
       };
 
-      if (reserva.estado === 'reservada') {
+      if (reserva.estado === 'reservada' || reserva.estado === 'confirmada') {
         crearBoton('Marcar Llegada', 'btn-llegada', 'fa-bell-concierge', () => {
           reserva.estado = 'ocupada';
-          this.guardarReservaEnServidor(reserva, 'llegada');
+          this.guardarReservaEnServidor(reserva); // Sin correo de llegada
           this.actualizarVistaCompleta();
         });
         crearBoton('Editar Datos', 'btn-editar-datos', 'fa-pen', () => this.abrirEdicionReserva(reserva));
@@ -1544,14 +1612,16 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           if (avisoMover) avisoMover.classList.remove('oculto');
           this.dibujarMesas(this.zonaActiva);
         });
+        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR DESDE EL DETALLE
         crearBoton('Cancelar por No-Show (15 min)', 'btn-cancelar', 'fa-trash-alt', () => {
-          if (confirm('¿Cancelar por tolerancia de 15 minutos vencida?')) {
+          if (confirm('¿Cancelar por tolerancia de 15 minutos vencida y notificar por correo?')) {
             reserva.estado = 'cancelada';
             this.guardarReservaEnServidor(reserva, 'noshow');
             this.actualizarVistaCompleta();
           }
         });
       } else if (reserva.estado === 'ocupada') {
+        // 🛡️ MESA OCUPADA: Se oculta el botón CANCELAR
         crearBoton('Liberar Mesa', 'btn-liberar', 'fa-broom', () => {
           reserva.estado = 'liberada';
           this.guardarReservaEnServidor(reserva);
@@ -1572,11 +1642,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
             });
         }
         crearBoton(esWalkIn ? 'Editar Personas' : 'Editar Datos', 'btn-editar-datos', 'fa-pen', () => this.abrirEdicionReserva(reserva));
-        crearBoton('Cancelar / Retirar', 'btn-cancelar', 'fa-trash-alt', () => {
-          reserva.estado = 'cancelada';
-          this.guardarReservaEnServidor(reserva);
-          this.actualizarVistaCompleta();
-        });
       } else if (reserva.estado === 'bloqueada') {
         crearBoton('Desbloquear', 'btn-liberar', 'fa-unlock', () => {
           reserva.estado = 'finalizada';
@@ -1596,7 +1661,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     if (modalDetalle) modalDetalle.classList.remove('oculto');
   }
 
-  // 📊 MÉTODOS DE ANALÍTICA Y GRÁFICAS ROSA MEXICANO
   async cargarChartJS(): Promise<void> {
     return new Promise((resolve) => {
       if ((window as any).Chart) {
@@ -1617,7 +1681,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     const totalPax = activas.reduce((sum, r) => sum + parseInt(r.personas || 0), 0);
     const paxPromedio = totalMesas > 0 ? (totalPax / totalMesas).toFixed(1) : '0.0';
 
-    // 1. CÁLCULO DE HORA PICO
     const horasConteo: { [key: string]: number } = {};
     activas.forEach(r => {
       if (r.hora) {
@@ -1635,7 +1698,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       }
     });
 
-    // 2. CÁLCULO DE ZONA TOP ROSA MEXICANO
     const zonasConteo: { [key: string]: number } = {
       'Terraza': 0,
       'Piso': 0,
@@ -1683,7 +1745,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     const labels = Object.keys(datosZonas);
     const data = Object.values(datosZonas);
 
-    // Paleta Rosa Mexicano
     const colors = ['#e5007e', '#3498db', '#f39c12', '#9b59b6'];
 
     this.chartInstance = new Chart(canvas, {

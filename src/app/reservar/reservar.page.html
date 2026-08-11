@@ -9,7 +9,7 @@
       
       <!-- Cuerpo del formulario -->
       <div class="form-body">
-        <h3>Reserva tu Mesa</h3>
+        <h3>Reserva tu Mesa en Rosa Mexicano</h3>
         
         <!-- Fila Fecha y Hora -->
         <div class="row-inputs">
@@ -17,14 +17,14 @@
             <label class="label-texto">Fecha de visita</label>
             <div class="input-wrapper">
               <ion-icon name="calendar-outline" class="icono-input"></ion-icon>
-              <ion-input type="date" class="input-limpio"></ion-input>
+              <ion-input type="date" [min]="todayDate" [(ngModel)]="fecha" class="input-limpio"></ion-input>
             </div>
           </div>
           <div class="column-input">
             <label class="label-texto">Hora</label>
             <div class="input-wrapper">
               <ion-icon name="time-outline" class="icono-input"></ion-icon>
-              <ion-input type="time" class="input-limpio"></ion-input>
+              <ion-input type="time" [(ngModel)]="hora" class="input-limpio"></ion-input>
             </div>
           </div>
         </div>
@@ -33,18 +33,15 @@
         <label class="label-texto">Número de Personas</label>
         <div class="input-wrapper">
           <ion-icon name="people-outline" class="icono-input"></ion-icon>
-          <ion-input type="number" min="1" max="12" placeholder="Ej. 4 personas" class="input-limpio"></ion-input>
+          <ion-input type="number" min="1" max="50" [(ngModel)]="personas" placeholder="Ej. 4 personas" class="input-limpio"></ion-input>
         </div>
         
         <!-- Área de Preferencia -->
         <label class="label-texto">Área de Preferencia</label>
         <div class="input-wrapper">
           <ion-icon name="restaurant-outline" class="icono-input"></ion-icon>
-          <ion-select placeholder="Selecciona el área..." class="input-limpio" interface="popover">
-            <ion-select-option value="terraza">Terraza</ion-select-option>
-            <ion-select-option value="piso">Piso</ion-select-option>
-            <ion-select-option value="jardin">Jardín</ion-select-option>
-            <ion-select-option value="cava">Cava</ion-select-option>
+          <ion-select [(ngModel)]="zona" placeholder="Selecciona el área..." class="input-limpio" interface="popover">
+            <ion-select-option *ngFor="let z of zonasDisponibles" [value]="z">{{ z }}</ion-select-option>
           </ion-select>
         </div>
 
@@ -56,14 +53,14 @@
             <label class="label-texto">Nombre</label>
             <div class="input-wrapper">
               <ion-icon name="person-outline" class="icono-input"></ion-icon>
-              <ion-input type="text" placeholder="Ej. Juan" class="input-limpio"></ion-input>
+              <ion-input type="text" [(ngModel)]="nombre" placeholder="Ej. Juan Pablo" class="input-limpio"></ion-input>
             </div>
           </div>
           <div class="column-input">
             <label class="label-texto">Apellido</label>
             <div class="input-wrapper">
               <ion-icon name="person-outline" class="icono-input"></ion-icon>
-              <ion-input type="text" placeholder="Ej. Pérez" class="input-limpio"></ion-input>
+              <ion-input type="text" [(ngModel)]="apellido" placeholder="Ej. Pérez" class="input-limpio"></ion-input>
             </div>
           </div>
         </div>
@@ -72,27 +69,27 @@
         <label class="label-texto">Número de Teléfono</label>
         <div class="input-wrapper">
           <ion-icon name="call-outline" class="icono-input"></ion-icon>
-          <ion-input type="tel" placeholder="Ej. 55 1234 5678" class="input-limpio"></ion-input>
+          <ion-input type="tel" [(ngModel)]="telefono" (ionInput)="limpiarTelefono($event)" placeholder="Ej. 44334534" class="input-limpio"></ion-input>
         </div>
 
         <!-- Email -->
         <label class="label-texto">Correo Electrónico</label>
         <div class="input-wrapper">
           <ion-icon name="mail-outline" class="icono-input"></ion-icon>
-          <ion-input type="email" placeholder="Ej. juan@correo.com" class="input-limpio"></ion-input>
+          <ion-input type="email" [(ngModel)]="email" placeholder="Ej. Corro@gmail.com" class="input-limpio"></ion-input>
         </div>
 
         <!-- Notas Especiales -->
         <label class="label-texto">Notas Especiales</label>
         <div class="input-wrapper textarea-wrapper">
           <ion-icon name="document-text-outline" class="icono-input"></ion-icon>
-          <ion-textarea placeholder="Ej. Alergia al gluten, mesa cerca de la ventana..." class="input-limpio"></ion-textarea>
+          <ion-textarea [(ngModel)]="nota" placeholder="Ej. Alergias, cumpleaños..." class="input-limpio"></ion-textarea>
         </div>
       </div>
       
       <!-- Botón -->
       <div class="form-footer">
-        <ion-button expand="block" class="btn-guardar">
+        <ion-button expand="block" class="btn-guardar" (click)="confirmarReservacion()">
           CONFIRMAR RESERVACIÓN
         </ion-button>
       </div>

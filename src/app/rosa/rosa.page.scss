@@ -222,7 +222,6 @@
 }
 
 ::ng-deep {
-    /* --- POPOVER FLOTANTE ESTÁTICO DE ACCIONES RÁPIDAS --- */
     .popover-overlay {
       position: fixed;
       top: 0; left: 0;
@@ -275,7 +274,7 @@
               background: #27ae60;
               color: #ffffff;
 
-              &.reservada { background-color: var(--res) !important; color: #ffffff !important; }
+              &.reservada, &.confirmada { background-color: var(--res) !important; color: #ffffff !important; }
               &.ocupada { background-color: var(--occ) !important; color: #ffffff !important; }
               &.bloqueada { background-color: var(--blo) !important; color: #ffffff !important; }
             }
@@ -377,7 +376,7 @@
             margin-bottom: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 
-            &.reservada { border-left-color: var(--res); }
+            &.reservada, &.confirmada { border-left-color: var(--res); }
             &.ocupada { border-left-color: var(--occ); }
 
             .multi-res-header {
@@ -495,12 +494,12 @@
     .res-nombre { font-size: 12px; line-height: 1.2; font-weight: 500; text-align: center; }
     .res-pax { font-size: 14px; font-weight: bold; }
     
-    .mesa.reservada { background: var(--res) !important; background-color: var(--res) !important; border-color: var(--res); box-shadow: 0 4px 10px rgba(241, 196, 15, 0.4); .res-nombre, .res-pax, .mesa-numero, .mesa-capacidad { color: #1a1d21 !important; } }
+    .mesa.reservada, .mesa.confirmada { background: var(--res) !important; background-color: var(--res) !important; border-color: var(--res); box-shadow: 0 4px 10px rgba(241, 196, 15, 0.4); .res-nombre, .res-pax, .mesa-numero, .mesa-capacidad { color: #1a1d21 !important; } }
     .mesa.ocupada { background: var(--occ) !important; background-color: var(--occ) !important; border-color: var(--occ); box-shadow: 0 4px 10px rgba(192, 57, 43, 0.4); .res-nombre, .res-pax, .mesa-numero, .mesa-capacidad { color: #ffffff !important; } }
     .mesa.bloqueada { background: var(--blo) !important; background-color: var(--blo) !important; border-color: var(--blo); opacity: 0.7; .res-nombre, .res-pax, .mesa-numero, .mesa-capacidad { color: #ffffff !important; } }
     .mesa.seleccionable { border-color: var(--move); box-shadow: 0 0 10px rgba(142, 68, 173, 0.4); animation: pulsar 1.5s infinite; cursor: cell; }
 
-    /* EFECTO BICOLOR MITAD Y MITAD */
+    /* EFECTO BICOLOR MITAD Y MITAD (AMARILLO/ROJO) */
     .mesa.mixta, 
     .mesa.doble-ancho.mixta, 
     .mesa.doble-alto.mixta {
@@ -652,7 +651,6 @@
 .fusion-choice-button.permanente > i { background: color-mix(in srgb, var(--accent) 14%, white); color: var(--accent); }
 @media (max-width: 520px) { .fusion-choice-actions { grid-template-columns: 1fr; } }
 
-/* --- ESTILOS DE MODALES CON FORMATO CLARO Y CAMPOS EN 2 COLUMNAS (AL IGUAL QUE PIETRA) --- */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0;
@@ -678,7 +676,6 @@
       .modal-close-btn { background: none; border: none; font-size: 28px; color: #94a3b8; cursor: pointer; &:hover { color: #ef4444; } }
     }
 
-    /* 🎯 FIX DE FILAS EN 2 COLUMNAS PAREJAS */
     .detalle-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;

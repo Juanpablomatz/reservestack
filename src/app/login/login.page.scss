@@ -1,6 +1,6 @@
 .fondo-pantalla {
   /* 🖼️ Imagen de fondo con filtro oscuro elegante */
-  --background: linear-gradient(rgba(15, 21, 25, 0.82), rgba(15, 21, 25, 0.82)), url('/assets/bg-login.jpg') no-repeat center center / cover !important;
+  --background: linear-gradient(rgba(15, 21, 25, 0.82), rgba(15, 21, 25, 0.82)), url('/assets/bg-login.png') no-repeat center center / cover !important;
 }
 
 .contenedor-centrado {
@@ -55,7 +55,7 @@
 }
 
 ion-button {
-  margin-top: 25px;
+  margin-top: 20px;
   font-weight: bold;
   font-size: 15px;
   letter-spacing: 1px;
@@ -71,7 +71,135 @@ ion-button {
   box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
 }
 
+/* 🔑 ENLACE ¿OLVIDASTE TU CONTRASEÑA? */
+.enlace-olvide {
+  margin-top: 18px;
+  display: block;
+  color: #d4af37;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: #f3d25d;
+  }
+}
+
+/* =========================================================
+   🔑 ESTILOS DE LA VENTANA MODAL DE RECUPERACIÓN DE PIN
+   ======================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(10, 15, 20, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: fadeIn 0.25s ease-out;
+
+  .modal-card {
+    background: rgba(22, 31, 44, 0.95);
+    border: 2px solid #d4af37;
+    border-radius: 18px;
+    padding: 28px 22px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(212, 175, 55, 0.25);
+    position: relative;
+    text-align: center;
+    box-sizing: border-box;
+
+    .modal-close-btn {
+      position: absolute;
+      top: 12px; right: 16px;
+      background: transparent;
+      border: none;
+      color: #a0aec0;
+      font-size: 26px;
+      cursor: pointer;
+      transition: color 0.2s;
+      &:hover { color: #ef4444; }
+    }
+
+    .modal-header-recuperar {
+      margin-bottom: 18px;
+
+      h2 {
+        color: #d4af37;
+        font-family: 'Times New Roman', serif;
+        font-size: 20px;
+        margin: 0 0 6px 0;
+        font-weight: 800;
+      }
+
+      .paso-badge {
+        background: rgba(212, 175, 55, 0.15);
+        color: #d4af37;
+        border: 1px solid #d4af37;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: bold;
+        text-transform: uppercase;
+        display: inline-block;
+      }
+    }
+
+    .subtexto-instruccion {
+      color: #9faec0;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    /* Input especial para el PIN centrado y con espacio */
+    .pin-input {
+      --background: rgba(30, 43, 54, 0.95) !important;
+      --color: #d4af37 !important;
+      border: 2px dashed #d4af37;
+      border-radius: 10px;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 6px;
+      text-align: center;
+      margin: 15px 0;
+    }
+
+    .mensaje-exito {
+      background: rgba(39, 174, 96, 0.15);
+      border: 1px solid #27ae60;
+      color: #72e09b;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      margin-bottom: 15px;
+    }
+
+    .mensaje-error {
+      background: rgba(192, 57, 43, 0.15);
+      border: 1px solid #c0392b;
+      color: #ff9f9f;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      margin-bottom: 15px;
+    }
+  }
+}
+
 @keyframes zoomIn {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
