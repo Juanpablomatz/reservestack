@@ -1,11 +1,11 @@
 {
   "name": "reservestack",
-  "version": "0.0.1",
-  "author": "Ionic Framework",
-  "homepage": "https://ionicframework.com/",
+  "version": "1.0.0",
+  "description": "Sistema de Gestión de Reservas y Planos en Tiempo Real - ReserveStack",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "node server.js",
+    "dev": "node server.js",
     "server": "node server.js",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
@@ -28,11 +28,14 @@
     "@capacitor/keyboard": "8.0.3",
     "@capacitor/status-bar": "8.0.2",
     "@ionic/angular": "^8.0.0",
+    "bcryptjs": "^2.4.3",
     "chart.js": "^4.5.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.5.1",
     "ionicons": "^7.0.0",
+    "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.22.6",
     "nodemailer": "^9.0.3",
     "rxjs": "~7.8.0",
@@ -67,6 +70,5 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "typescript": "~5.9.0"
-  },
-  "description": "An Ionic project"
+  }
 }

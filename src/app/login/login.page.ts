@@ -39,8 +39,9 @@ export class LoginPage implements OnInit {
   ) {}
 
   ngOnInit() {
+    // Si el usuario ya tiene sesión activa al entrar a /login o dar F5, enviarlo a Rosa Mexicano
     if (this.authService.isAuthenticated()) {
-      this.router.navigate(['/panel']);
+      this.router.navigate(['/rosa']);
     }
   }
 

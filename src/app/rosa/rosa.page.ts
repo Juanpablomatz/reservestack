@@ -61,41 +61,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     this.authService.logout();
   }
 
-  // 🔔 SINTETIZADOR NATIVO DE SONIDO DE CAMPANADA (CHIME) PARA NUEVAS RESERVAS
-  reproducirSonidoCampana() {
-    try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-
-      // Nota 1 (Aguda)
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      gain1.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(ctx.currentTime);
-      osc1.stop(ctx.currentTime + 0.8);
-
-      // Nota 2 (Campanada armónica)
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
-      gain2.gain.setValueAtTime(0.4, ctx.currentTime + 0.15);
-      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(ctx.currentTime + 0.15);
-      osc2.stop(ctx.currentTime + 1.2);
-    } catch (e) {
-      console.warn('Audio Context no disponible.', e);
-    }
-  }
-
   obtenerFechaActualLocal(): string {
     const hoy = new Date();
     const year = hoy.getFullYear();
@@ -257,32 +222,11 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       this.socket = io(this.BASE_URL);
       this.socket.emit('join_restaurante', 2);
 
-      // ⚡ NgZone + Campana Inteligente (Solo suena si la nueva reserva es para la fecha en pantalla)
+      // ⚡ NgZone + Sincronización en tiempo real para Rosa Mexicano
       this.socket.on('actualizar_rosa', (r: any[]) => { 
         this.ngZone.run(() => {
-          const prevHoy = this.todasLasReservas.filter(x => x.fecha === this.fechaSeleccionada).length;
-          const nuevHoy = r.filter(x => x.fecha === this.fechaSeleccionada).length;
-
-          if (nuevHoy > prevHoy) {
-            this.reproducirSonidoCampana(); // 🔔 ¡Campanada activa solo si es para la fecha en pantalla!
-          }
-
           this.todasLasReservas = r; 
           this.actualizarVistaCompleta(); 
-        });
-      });
-
-      this.socket.on('actualizar_reservas', (r: any[]) => {
-        this.ngZone.run(() => {
-          const prevHoy = this.todasLasReservas.filter(x => x.fecha === this.fechaSeleccionada).length;
-          const nuevHoy = r.filter(x => x.fecha === this.fechaSeleccionada).length;
-
-          if (nuevHoy > prevHoy) {
-            this.reproducirSonidoCampana();
-          }
-
-          this.todasLasReservas = r;
-          this.actualizarVistaCompleta();
         });
       });
     } catch(e) {}
@@ -886,7 +830,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   ejecutarMover(idMesaNueva: any, zonaNueva: any) {
     this.modoMover = false;
     const avisoMover = document.getElementById('aviso-mover');
-    if (avisoMover) avisoMover.classList.remove('oculto');
+    if (avisoMover) avisoMover.classList.add('oculto'); // ✅ ÚNICO CAMBIO: Cambiado de remove a add
     
     const res = this.todasLasReservas.find(r => Number(r.id) === Number(this.reservaAMoverId));
     if (res) {
@@ -1074,7 +1018,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           if (avisoMover) avisoMover.classList.remove('oculto');
           this.dibujarMesas(this.zonaActiva);
         });
-        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR RESERVA
+        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR DESDE EL POPOVER
         crearBotonPop('Cancelar', 'btn-cancelar', 'fa-trash-alt', () => {
           popover.classList.add('oculto');
           if (confirm('¿Cancelar la reserva y notificar al cliente por correo?')) {
@@ -1661,6 +1605,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     if (modalDetalle) modalDetalle.classList.remove('oculto');
   }
 
+  // 📊 MÉTODOS DE ANALÍTICA Y GRÁFICAS ROSA MEXICANO
   async cargarChartJS(): Promise<void> {
     return new Promise((resolve) => {
       if ((window as any).Chart) {

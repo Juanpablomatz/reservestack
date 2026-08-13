@@ -40,9 +40,9 @@ import {
     IonIcon
   ]
 })
-export class ReservarPietraPage implements OnInit {
+export class ReservarPage implements OnInit {
 
-  // Modelo de datos del formulario del cliente externo
+  // Modelo de datos del formulario de Rosa Mexicano
   fecha: string = '';
   hora: string = '';
   zona: string = 'Terraza';
@@ -53,17 +53,17 @@ export class ReservarPietraPage implements OnInit {
   email: string = '';
   nota: string = '';
 
-  todayDate: string = ''; // Fecha mínima de reserva permitida
+  todayDate: string = ''; 
 
-  // Zonas predeterminadas oficiales de Pietra Cucina
-  zonasDisponibles: string[] = ['Terraza', 'Nivel bajo', 'Nivel medio', 'Pared lloron'];
+  // Zonas oficiales de Rosa Mexicano
+  zonasDisponibles: string[] = ['Terraza', 'Piso', 'Jardín', 'Cava'];
 
-  // Distribución física de respaldo (Pietra) si la base de datos está en blanco
+  // Distribución de respaldo de Rosa Mexicano
   restauranteLayout: any = {
-    'Terraza': [{id:100,c:4},{id:101,c:4},{id:102,c:4},{id:103,c:4},{id:104,c:4},{id:105,c:4},{id:106,c:4}],
-    'Nivel bajo': [{id:90,c:4},{id:91,c:4},{id:92,c:4}],
-    'Nivel medio': [{id:80,c:4},{id:81,c:4},{id:82,c:4},{id:83,c:4},{id:84,c:4},{id:85,c:4},{id:86,c:4}],
-    'Pared lloron': [{id:70,c:4},{id:71,c:4},{id:72,c:4},{id:73,c:4},{id:74,c:4},{id:75,c:4},{id:76,c:4}]
+    'Terraza': [{id:1,c:4},{id:2,c:4},{id:3,c:4},{id:4,c:4}],
+    'Piso': [{id:10,c:4},{id:11,c:4},{id:12,c:4},{id:13,c:4},{id:14,c:4}],
+    'Jardín': [{id:20,c:4},{id:21,c:4},{id:22,c:4},{id:23,c:4}],
+    'Cava': [{id:30,c:4},{id:31,c:4},{id:32,c:4}]
   };
 
   readonly BASE_URL = 'http://localhost:3000';
@@ -108,7 +108,7 @@ export class ReservarPietraPage implements OnInit {
 
   async cargarDisenoMesas() {
     try {
-      const resp = await fetch(`${this.BASE_URL}/api/pietra/diseno`);
+      const resp = await fetch(`${this.BASE_URL}/api/restaurantes/2/diseno`);
       const data = await resp.json();
       
       const tieneMesas = Object.values(data).some((arr: any) => arr && arr.length > 0);
@@ -117,11 +117,10 @@ export class ReservarPietraPage implements OnInit {
         this.zonasDisponibles = Object.keys(data);
       }
     } catch (e) {
-      console.warn('⚠️ Usando distribución de mesas de Pietra local de respaldo (API desconectada).');
+      console.warn('⚠️ Usando distribución de mesas de Rosa Mexicano de respaldo.');
     }
   }
 
-  // ⏰ VALIDACIÓN INTELIGENTE DE HORARIOS Y HORAS PASADAS (PIETRA CUCINA)
   validarHorarioServicio(fechaStr: string, horaStr: string): { valido: boolean; mensaje: string } {
     if (!fechaStr || !horaStr) {
       return { valido: false, mensaje: 'Por favor selecciona fecha y hora.' };
@@ -129,34 +128,19 @@ export class ReservarPietraPage implements OnInit {
 
     const [year, month, day] = fechaStr.split('-').map(Number);
     const fechaObj = new Date(year, month - 1, day);
-    const diaSemana = fechaObj.getDay(); // 0: Domingo, 1: Lunes, 2: Martes, 3: Miércoles, 4: Jueves, 5: Viernes, 6: Sábado
+    const diaSemana = fechaObj.getDay(); 
 
-    // 1. Días cerrados en Pietra Cucina
-    if (diaSemana === 1) { // Lunes
-      return { valido: false, mensaje: 'Pietra Cucina se encuentra CERRADO los días Lunes.' };
-    }
-
-    // 2. Horarios oficiales por día en Pietra Cucina
-    let horaApertura = '14:00';
-    let horaCierre = '21:00';
-
-    if (diaSemana >= 2 && diaSemana <= 4) { // Martes a Jueves (2:00 PM - 9:00 PM)
-      horaApertura = '14:00'; horaCierre = '21:00';
-    } else if (diaSemana === 5 || diaSemana === 6) { // Viernes y Sábado (2:00 PM - 11:00 PM)
-      horaApertura = '14:00'; horaCierre = '23:00';
-    } else if (diaSemana === 0) { // Domingo (1:00 PM - 8:00 PM)
-      horaApertura = '13:00'; horaCierre = '20:00';
-    }
+    let horaApertura = '13:00';
+    let horaCierre = '23:00';
 
     if (horaStr < horaApertura || horaStr > horaCierre) {
       const nomDia = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][diaSemana];
       return { 
         valido: false, 
-        mensaje: `Nuestro horario de atención los ${nomDia}s en Pietra Cucina es de ${horaApertura} a ${horaCierre} hs. Por favor elige una hora dentro del servicio.` 
+        mensaje: `Nuestro horario de atención los ${nomDia}s en Rosa Mexicano es de ${horaApertura} a ${horaCierre} hs.` 
       };
     }
 
-    // 3. Bloqueo de horas pasadas para la fecha de HOY
     if (fechaStr === this.todayDate) {
       const ahora = new Date();
       const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
@@ -170,7 +154,7 @@ export class ReservarPietraPage implements OnInit {
 
   async buscarMesaDisponible(personasRequeridas: number): Promise<number> {
     try {
-      const resp = await fetch(`${this.BASE_URL}/api/pietra/reservas`);
+      const resp = await fetch(`${this.BASE_URL}/api/restaurantes/2/reservas`);
       const todasLasReservas = await resp.json();
 
       const ocupadasHoy = todasLasReservas.filter((r: any) => 
@@ -183,7 +167,6 @@ export class ReservarPietraPage implements OnInit {
 
       const mesasDeZona = this.restauranteLayout[this.zona] || [];
 
-      // Helper para comprobar si una mesa (o cualquiera de sus componentes fusionados) está ocupada
       const mesaEstaOcupada = (m: any) => {
         const mIdStr = m.id.toString();
         if (idsMesasOcupadas.includes(mIdStr)) return true;
@@ -207,15 +190,14 @@ export class ReservarPietraPage implements OnInit {
       if (mesaIdeal) return mesaIdeal.id;
 
       const cualquierMesaLibre = mesasDeZona.find((m: any) => !mesaEstaOcupada(m));
-
       if (cualquierMesaLibre) return cualquierMesaLibre.id;
 
     } catch (error) {
-      console.error('Error en el algoritmo de asignación de mesa:', error);
+      console.error('Error al buscar mesa en Rosa Mexicano:', error);
     }
 
     const mesasRespaldo = this.restauranteLayout[this.zona] || [];
-    return mesasRespaldo.length > 0 ? mesasRespaldo[0].id : 100;
+    return mesasRespaldo.length > 0 ? mesasRespaldo[0].id : 1;
   }
 
   async confirmarReservacion() {
@@ -223,41 +205,35 @@ export class ReservarPietraPage implements OnInit {
     const regexEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     const regexTel = /^[0-9]+$/;
 
-    // 1. Validaciones requeridas de existencia
     if (!this.nombre.trim() || !this.apellido.trim() || !this.fecha || !this.hora) {
       alert('Por favor, completa los campos requeridos: Fecha, Hora, Nombre y Apellido.');
       return;
     }
 
-    // 2. Validación estricta de Horarios Oficiales y Horas Pasadas
     const checkHorario = this.validarHorarioServicio(this.fecha, this.hora);
     if (!checkHorario.valido) {
       alert(`⚠️ ${checkHorario.mensaje}`);
       return;
     }
 
-    // 3. Validación de formato de texto
     if (!regexTexto.test(this.nombre) || !regexTexto.test(this.apellido)) {
       alert('Tu Nombre y Apellido solo deben contener letras.');
       return;
     }
 
-    // 4. Validación de comensales
     const pax = Number(this.personas);
     if (isNaN(pax) || pax < 1 || pax > 50) {
       alert('El número de personas debe ser un valor numérico entre 1 y 50.');
       return;
     }
 
-    // 5. Validación opcional de Teléfono
     if (this.telefono.trim() && (!regexTel.test(this.telefono) || this.telefono.length < 8 || this.telefono.length > 15)) {
-      alert('El número de teléfono debe contener únicamente dígitos numéricos (entre 8 y 15 números).');
+      alert('El número de teléfono debe contener únicamente dígitos numéricos.');
       return;
     }
 
-    // 6. Validación opcional de Email
     if (this.email.trim() && !regexEmail.test(this.email)) {
-      alert('Por favor, ingresa una dirección de correo electrónico válida (ejemplo@correo.com).');
+      alert('Por favor, ingresa un correo electrónico válido.');
       return;
     }
 
@@ -276,11 +252,13 @@ export class ReservarPietraPage implements OnInit {
       email: this.email.trim() || null,
       nota: this.nota.trim() || null,
       estado: 'reservada',
-      isNewRecord: true
+      isNewRecord: true,
+      tipoCorreo: 'crear'
     };
 
     try {
-      const response = await fetch(`${this.BASE_URL}/api/pietra/reservas`, {
+      // ⚡ ENVÍO AL ENDPOINT DIRECTO DE ROSA MEXICANO (RESTAURANTE 2)
+      const response = await fetch(`${this.BASE_URL}/api/restaurantes/2/reservas`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -290,14 +268,14 @@ export class ReservarPietraPage implements OnInit {
       const data = await response.json();
 
       if (data.success) {
-        alert(`¡Reserva confirmada con éxito en Pietra Cucina!\nTe hemos asignado la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmación enviada a: ${this.email || 'tu correo'}`);
+        alert(`¡Reserva confirmada con éxito en Rosa Mexicano!\nTe hemos asignado la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmación enviada a: ${this.email || 'tu correo'}`);
         this.limpiarFormulario();
       } else {
         alert('Error al procesar tu registro. Por favor vuelve a intentarlo.');
       }
     } catch (e) {
       console.error('Error al enviar la reserva:', e);
-      alert('No se pudo conectar al servidor de reservas. Inténtalo de nuevo más tarde.');
+      alert('No se pudo conectar al servidor de reservas.');
     }
   }
 

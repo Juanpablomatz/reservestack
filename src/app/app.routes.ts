@@ -31,14 +31,14 @@ export const routes: Routes = [
     loadComponent: () => import('./panel/panel.page').then(m => m.PanelPage),
     canActivate: [authGuard]
   },
-  // 🌐 RUTAS PÚBLICAS PARA CLIENTES (SIN LOGIN / GUARD)
+  // RUTAS PÚBLICAS PARA CLIENTES (SIN LOGIN / GUARD)
   {
-    path: 'reservar',
-    loadComponent: () => import('./reservar/reservar.page').then(m => m.ReservarPage)
-  },
+  path: 'reservar',
+  loadComponent: () => import('./reservar/reservar.page').then(m => m.ReservarPage)
+  }, 
   {
-    path: 'reservar-pietra',
-    loadComponent: () => import('./reservar-pietra/reservar-pietra.page').then(m => m.ReservarPietraPage)
+  path: 'reservar-pietra',
+  loadComponent: () => import('./reservar-pietra/reservar-pietra.page').then(m => m.ReservarPage)
   },
   {
     path: 'reservar-llorona',

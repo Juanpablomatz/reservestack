@@ -1,14 +1,21 @@
 :host {
-  /* Paleta de colores basada en tu diseño elegante */
-  --color-fondo: #15181c;       /* Fondo oscuro casi negro */
-  --color-tarjeta: #221e29;     /* Gris oscuro para dar contraste */
-  --color-texto: #ffffff;
-  --color-rosa-mex: #e5007e;    
-  --color-dorado: #d4af37;      
+  /* 🎨 PALETA DE COLORES OFICIAL EXTRAÍDA DE TUS LOGOS */
+  --fondo-pagina: #0d1218;               /* Azul marino profundo (Pietra) */
+  --tarjeta-panel: rgba(22, 32, 43, 0.92); /* Fondo de tarjeta institucional */
+  --texto-principal: #ffffff;
+  
+  /* Identidades de cada restaurante */
+  --rosa-mexicano: #e5007e;             /* Rosa Mexicano Neón */
+  --pietra-dorado: #d4af37;             /* Dorado Pietra Cucina */
+  --pietra-fondo: #1b2430;              /* Fondo azul marino Pietra */
+  --llorona-cafe: #703d1a;              /* Café Chocolate Llorona Comedor */
+  --llorona-beige: #d8b89a;             /* Beige Arena Llorona */
 }
 
 .fondo-oscuro {
-  --background: var(--color-fondo);
+  /* 🖼️ IMAGEN DE FONDO CON SUPERPOSICIÓN SEMITRANSPARENTE */
+  --background: linear-gradient(rgba(13, 18, 24, 0.75), rgba(13, 18, 24, 0.88)), 
+                url('/assets/restaurante-bg.jpg') center/cover no-repeat !important;
 }
 
 .contenedor-centrado {
@@ -20,64 +27,103 @@
 }
 
 .tarjeta-oscura {
-  background: var(--color-tarjeta);
-  border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+ --background: linear-gradient(180deg, rgba(15, 22, 30, 0.65) 0%, rgba(15, 22, 30, 0.22) 100%);
+  background: linear-gradient(180deg, rgba(15, 22, 30, 0.65) 0%, rgba(15, 22, 30, 0.22) 100%) !important;
+  
+  
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.22); /* Borde de cristal que resalta */
+  
   width: 100%;
-  max-width: 380px;
-  padding: 15px 10px;
-  border: none;
+  max-width: 390px;
+  padding: 28px 20px;
 }
+ion-card-header, ion-card-content {
+  background: transparent !important;
+}
+
 
 .titulo-centrado {
   text-align: center;
-  color: var(--color-texto);
-  font-weight: 600;
-  letter-spacing: 2px;
-  font-size: 18px;
+  color: var(--texto-principal);
+  font-weight: 700;
+  letter-spacing: 3px;
+  font-size: 19px;
   line-height: 1.4;
   margin-bottom: 5px;
+  text-transform: uppercase;
 }
 
 .botones-restaurantes {
   display: flex;
   flex-direction: column;
-  gap: 20px; /* Espacio exacto entre los dos botones */
-  margin-top: 15px;
+  gap: 16px; /* Espaciado uniforme */
+  margin-top: 22px;
 }
 
-/* --- Botón Rosa Mexicano (Con el gradiente y sombra que tenías) --- */
+/* ==========================================
+   1. 🇲🇽 BOTÓN ROSA MEXICANO (Vibrante / Magenta)
+   ========================================== */
 .btn-rosa-mex {
-  --background: linear-gradient(90deg, #ff0077, #c3006a); 
-  --color: white;
-  --border-radius: 6px;
-  --box-shadow: 0 4px 15px rgba(229, 0, 126, 0.3);
-  font-weight: bold;
-  letter-spacing: 1px;
-  height: 48px;
+  --background: linear-gradient(135deg, #e5007e 0%, #a8005b 100%); 
+  --color: #ffffff;
+  --border-radius: 10px;
+  --box-shadow: 0 6px 20px rgba(229, 0, 126, 0.4);
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  height: 52px;
   margin: 0;
-  transition: transform 0.2s ease;
+  transition: all 0.25s ease;
 
   &:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
   }
 }
 
-/* --- Botón Pietra Cucina (Estilo outline con borde dorado) --- */
+/* ==========================================
+   2. 🇮🇹 BOTÓN PIETRA CUCINA (Obsidiana + Dorado)
+   ========================================== */
 .btn-pietra {
-  --border-color: var(--color-dorado);
+  --background: var(--pietra-fondo);
+  --border-color: var(--pietra-dorado);
   --border-style: solid;
-  --border-width: 1.5px;
-  --color: var(--color-dorado);
-  --border-radius: 6px;
-  --background-hover: rgba(212, 175, 55, 0.1);
-  font-weight: bold;
-  letter-spacing: 1px;
-  height: 48px;
+  --border-width: 2px;
+  --color: var(--pietra-dorado);
+  --border-radius: 10px;
+  --box-shadow: 0 4px 15px rgba(212, 175, 55, 0.2);
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  height: 52px;
   margin: 0;
-  transition: transform 0.2s ease;
+  transition: all 0.25s ease;
 
   &:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
+  }
+}
+
+/* ==========================================
+   3. ☕ BOTÓN LA LLORONA COMEDOR (Café + Beige)
+   ========================================== */
+.btn-llorona-comedor {
+  --background: linear-gradient(135deg, #703d1a 0%, #4a270e 100%);
+  --border-color: var(--llorona-beige);
+  --border-style: solid;
+  --border-width: 1.5px;
+  --color: var(--llorona-beige);
+  --border-radius: 10px;
+  --box-shadow: 0 4px 15px rgba(112, 61, 26, 0.45);
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  height: 52px;
+  margin: 0;
+  transition: all 0.25s ease;
+
+  &:active {
+    transform: scale(0.97);
   }
 }

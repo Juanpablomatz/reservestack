@@ -60,41 +60,6 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     this.authService.logout();
   }
 
-  // 🔔 SINTETIZADOR NATIVO DE SONIDO DE CAMPANADA (CHIME) PARA LLORONA COMEDOR
-  reproducirSonidoCampana() {
-    try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-
-      // Nota 1 (Aguda)
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      gain1.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(ctx.currentTime);
-      osc1.stop(ctx.currentTime + 0.8);
-
-      // Nota 2 (Campanada armónica)
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
-      gain2.gain.setValueAtTime(0.4, ctx.currentTime + 0.15);
-      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(ctx.currentTime + 0.15);
-      osc2.stop(ctx.currentTime + 1.2);
-    } catch (e) {
-      console.warn('Audio Context no disponible.', e);
-    }
-  }
-
   obtenerFechaActualLocal(): string {
     const hoy = new Date();
     const year = hoy.getFullYear();
@@ -171,12 +136,16 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         body: JSON.stringify(payload)
       });
       
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || data.error || 'El servidor no pudo guardar la reserva');
+      }
+
       delete reserva.isNewRecord;
       delete reserva.tipoCorreo;
-
-      const data = await response.json();
       console.log('Llorona Comedor - Sincronizado:', data.message);
     } catch (e) {
+      alert(`No se guardó la operación en Llorona Comedor. ${e instanceof Error ? e.message : 'Revisa la conexión con el servidor.'}`);
       console.error('❌ Error de conexión a MySQL Llorona Comedor:', e);
     }
   }
@@ -269,32 +238,11 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       this.socket = io(this.BASE_URL);
       this.socket.emit('join_restaurante', 3);
 
-      // ⚡ NgZone + Campana Inteligente en tiempo real para Llorona Comedor
+      // ⚡ NgZone + Sincronización en tiempo real para Llorona Comedor
       this.socket.on('actualizar_llorona', (r: any[]) => { 
         this.ngZone.run(() => {
-          const prevHoy = this.todasLasReservas.filter(x => x.fecha === this.fechaSeleccionada).length;
-          const nuevHoy = r.filter(x => x.fecha === this.fechaSeleccionada).length;
-
-          if (nuevHoy > prevHoy) {
-            this.reproducirSonidoCampana(); // 🔔 ¡Campanada activa solo si es para la fecha en pantalla!
-          }
-
           this.todasLasReservas = r; 
           this.actualizarVistaCompleta(); 
-        });
-      });
-
-      this.socket.on('actualizar_reservas', (r: any[]) => {
-        this.ngZone.run(() => {
-          const prevHoy = this.todasLasReservas.filter(x => x.fecha === this.fechaSeleccionada).length;
-          const nuevHoy = r.filter(x => x.fecha === this.fechaSeleccionada).length;
-
-          if (nuevHoy > prevHoy) {
-            this.reproducirSonidoCampana();
-          }
-
-          this.todasLasReservas = r;
-          this.actualizarVistaCompleta();
         });
       });
     } catch(e) {}
@@ -325,8 +273,12 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         }
       });
     });
+    
+    // ✅ CORREGIDO: Llama explícitamente a this.cerrarSesion() al confirmar
     document.getElementById('btn-logout')?.addEventListener('click', () => {
-      if(confirm("¿Cerrar sesión de ReserveStack?")) console.log("Saliendo...");
+      if (confirm("¿Deseas cerrar sesión de ReserveStack?")) {
+        this.cerrarSesion();
+      }
     });
   }
 
@@ -884,11 +836,23 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     act('stats-totales-dia', totalesDia); 
   }
 
+  cancelarModoMover() {
+    this.modoMover = false;
+    this.reservaAMoverId = null;
+    const avisoMover = document.getElementById('aviso-mover');
+    if (avisoMover) avisoMover.classList.add('oculto');
+    this.dibujarMesas(this.zonaActiva);
+  }
+
   ejecutarMover(idMesaNueva: any, zonaNueva: any) {
     this.modoMover = false;
+    this.mesaSeleccionadaTemp = null;
+
+    // 1. Ocultar el aviso morado de la pantalla
     const avisoMover = document.getElementById('aviso-mover');
-    if (avisoMover) avisoMover.classList.remove('oculto');
-    
+    if (avisoMover) avisoMover.classList.add('oculto');
+
+    // 2. Buscar y actualizar la reserva
     const res = this.todasLasReservas.find(r => Number(r.id) === Number(this.reservaAMoverId));
     if (res) {
         res.idMesa = idMesaNueva.toString();
@@ -899,6 +863,8 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         
         this.guardarReservaEnServidor(res); 
     }
+
+    this.reservaAMoverId = null; // Limpiar ID de reserva a mover
     this.actualizarVistaCompleta();
   }
 
@@ -937,6 +903,8 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     if (this.modoMover) {
       if(confirm(`¿Mover reserva a Mesa ${idMesa}?`)) {
           this.ejecutarMover(idMesa, zona);
+      } else {
+          this.cancelarModoMover();
       }
       return;
     }
@@ -1308,12 +1276,16 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       });
     });
 
-    document.querySelectorAll('.modal-close-btn, #btn-cancelar-mover, #close-nueva-reserva, #lista-mesa-close-btn, #close-walkin, #btn-close-popover').forEach(btn => {
+    document.querySelectorAll('.modal-close-btn, #close-nueva-reserva, #lista-mesa-close-btn, #close-walkin, #btn-close-popover').forEach(btn => {
       btn.addEventListener('click', (e: any) => {
         const overlay = e.target.closest('.modal-overlay, .popover-overlay');
         if (overlay) overlay.classList.add('oculto');
         this.resetWalkinModal();
       });
+    });
+
+    document.getElementById('btn-cancelar-mover')?.addEventListener('click', () => {
+      this.cancelarModoMover();
     });
 
     document.getElementById('nueva-reserva-btn')?.addEventListener('click', () => {

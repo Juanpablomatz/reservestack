@@ -60,41 +60,6 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     this.authService.logout();
   }
 
-  // 🔔 SINTETIZADOR NATIVO DE SONIDO DE CAMPANADA (CHIME) PARA PIETRA CUCINA
-  reproducirSonidoCampana() {
-    try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-
-      // Nota 1 (Aguda)
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      gain1.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(ctx.currentTime);
-      osc1.stop(ctx.currentTime + 0.8);
-
-      // Nota 2 (Campanada armónica)
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
-      gain2.gain.setValueAtTime(0.4, ctx.currentTime + 0.15);
-      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(ctx.currentTime + 0.15);
-      osc2.stop(ctx.currentTime + 1.2);
-    } catch (e) {
-      console.warn('Audio Context no disponible.', e);
-    }
-  }
-
   obtenerFechaActualLocal(): string {
     const hoy = new Date();
     const year = hoy.getFullYear();
@@ -171,12 +136,16 @@ export class PietraPage implements AfterViewInit, OnDestroy {
         body: JSON.stringify(payload)
       });
       
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || data.error || 'El servidor no pudo guardar la reserva');
+      }
+
       delete reserva.isNewRecord;
       delete reserva.tipoCorreo;
-
-      const data = await response.json();
       console.log('Sincronizado con MySQL:', data.message);
     } catch (e) {
+      alert(`No se guardó la operación en Pietra Cucina. ${e instanceof Error ? e.message : 'Revisa la conexión con el servidor.'}`);
       console.error('❌ Error de conexión al sincronizar con MySQL:', e);
     }
   }
@@ -269,30 +238,9 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       this.socket = io(this.BASE_URL);
       this.socket.emit('join_restaurante', 1);
 
-      // ⚡ NgZone + Campana Inteligente en tiempo real para Pietra Cucina
+      // ⚡ NgZone + Sincronización en tiempo real para Pietra Cucina
       this.socket.on('actualizar_pietra', (r: any[]) => { 
         this.ngZone.run(() => {
-          const prevHoy = this.todasLasReservas.filter(x => x.fecha === this.fechaSeleccionada).length;
-          const nuevHoy = r.filter(x => x.fecha === this.fechaSeleccionada).length;
-
-          if (nuevHoy > prevHoy) {
-            this.reproducirSonidoCampana(); // 🔔 ¡Campanada activa solo si es para la fecha en pantalla!
-          }
-
-          this.todasLasReservas = this.limpiarNombresZonasViejas(r); 
-          this.actualizarVistaCompleta(); 
-        });
-      });
-
-      this.socket.on('actualizar_reservas', (r: any[]) => { 
-        this.ngZone.run(() => {
-          const prevHoy = this.todasLasReservas.filter(x => x.fecha === this.fechaSeleccionada).length;
-          const nuevHoy = r.filter(x => x.fecha === this.fechaSeleccionada).length;
-
-          if (nuevHoy > prevHoy) {
-            this.reproducirSonidoCampana();
-          }
-
           this.todasLasReservas = this.limpiarNombresZonasViejas(r); 
           this.actualizarVistaCompleta(); 
         });
@@ -904,9 +852,13 @@ export class PietraPage implements AfterViewInit, OnDestroy {
 
   ejecutarMover(idMesaNueva: any, zonaNueva: any) {
     this.modoMover = false;
+    this.mesaSeleccionadaTemp = null;
+
+    // 1. Ocultar el aviso morado de la pantalla
     const avisoMover = document.getElementById('aviso-mover');
-    if (avisoMover) avisoMover.classList.remove('oculto');
-    
+    if (avisoMover) avisoMover.classList.add('oculto'); // ✅ Cambiado remove por add
+
+    // 2. Buscar y actualizar la reserva
     const res = this.todasLasReservas.find(r => Number(r.id) === Number(this.reservaAMoverId));
     if (res) {
         res.idMesa = idMesaNueva.toString();
@@ -917,6 +869,8 @@ export class PietraPage implements AfterViewInit, OnDestroy {
         
         this.guardarReservaEnServidor(res); 
     }
+
+    this.reservaAMoverId = null; // Limpiar ID de reserva a mover
     this.actualizarVistaCompleta();
   }
 
@@ -1093,7 +1047,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           if (avisoMover) avisoMover.classList.remove('oculto');
           this.dibujarMesas(this.zonaActiva);
         });
-        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR RESERVA
+        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR DESDE EL POPOVER
         crearBotonPop('Cancelar', 'btn-cancelar', 'fa-trash-alt', () => {
           popover.classList.add('oculto');
           if (confirm('¿Cancelar la reserva y notificar al cliente por correo?')) {
