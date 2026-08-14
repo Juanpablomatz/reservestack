@@ -592,6 +592,6 @@ app.post('/api/restaurantes/:idRestaurante/reservas', async (req, res) => {
 
 server.listen(PORT, () => {
   console.log('==================================================');
-  console.log(`🛡️ Servidor API blindado escuchando en puerto ${PORT}`);
+  console.log(` Servidor API blindado escuchando en puerto ${PORT}`);
   console.log('==================================================');
 });
