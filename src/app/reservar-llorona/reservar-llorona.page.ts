@@ -1,7 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonContent, IonIcon } from '@ionic/angular/standalone';
+import { 
+  IonContent, 
+  IonInput, 
+  IonSelect, 
+  IonSelectOption, 
+  IonTextarea, 
+  IonButton,
+  IonIcon 
+} from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { 
   calendarOutline, 
@@ -11,7 +19,8 @@ import {
   personOutline, 
   callOutline, 
   mailOutline, 
-  documentTextOutline 
+  documentTextOutline,
+  gridOutline
 } from 'ionicons/icons';
 
 @Component({
@@ -19,7 +28,17 @@ import {
   templateUrl: './reservar-llorona.page.html',
   styleUrls: ['./reservar-llorona.page.scss'],
   standalone: true,
-  imports: [IonContent, IonIcon, CommonModule, FormsModule]
+  imports: [
+    IonContent, 
+    IonInput, 
+    IonSelect, 
+    IonSelectOption, 
+    IonTextarea, 
+    IonButton,
+    IonIcon, 
+    CommonModule, 
+    FormsModule
+  ]
 })
 export class ReservarLloronaPage implements OnInit {
 
@@ -36,8 +55,10 @@ export class ReservarLloronaPage implements OnInit {
   todayDate: string = '';
   cargando: boolean = false;
 
+  // Zona única oficial de Llorona Comedor
   zonasDisponibles: string[] = ['Piso'];
 
+  // Distribución física de respaldo (Mesas 1 a 10)
   restauranteLayout: any = {
     'Piso': [
       {id:1,c:4},{id:2,c:4},{id:3,c:4},{id:4,c:4},{id:5,c:4},
@@ -56,7 +77,8 @@ export class ReservarLloronaPage implements OnInit {
       personOutline,
       callOutline,
       mailOutline,
-      documentTextOutline
+      documentTextOutline,
+      gridOutline
     });
   }
 
@@ -93,13 +115,16 @@ export class ReservarLloronaPage implements OnInit {
       if (tieneMesas) {
         this.restauranteLayout = data;
         this.zonasDisponibles = Object.keys(data);
+        if (!this.zonasDisponibles.includes(this.zona) && this.zonasDisponibles.length > 0) {
+          this.zona = this.zonasDisponibles[0];
+        }
       }
     } catch (e) {
       console.warn('⚠️ Usando distribución de mesas de Llorona Comedor local de respaldo.');
     }
   }
 
-  // ⏰ VALIDACIÓN INTELIGENTE DE HORARIOS Y HORAS PASADAS (LLORONA COMEDOR)
+  // ⏰ VALIDACIÓN INTELIGENTE DE HORARIOS Y DÍAS DE SERVICIO (LLORONA COMEDOR)
   validarHorarioServicio(fechaStr: string, horaStr: string): { valido: boolean; mensaje: string } {
     if (!fechaStr || !horaStr) {
       return { valido: false, mensaje: 'Por favor selecciona fecha y hora.' };
@@ -107,7 +132,7 @@ export class ReservarLloronaPage implements OnInit {
 
     const [year, month, day] = fechaStr.split('-').map(Number);
     const fechaObj = new Date(year, month - 1, day);
-    const diaSemana = fechaObj.getDay(); // 0: Domingo, 1: Lunes, 2: Martes, 3: Miércoles, 4: Jueves, 5: Viernes, 6: Sábado
+    const diaSemana = fechaObj.getDay(); // 0: Domingo, 1: Lunes, ..., 6: Sábado
 
     // 1. Días cerrados en Llorona Comedor (Lunes y Martes)
     if (diaSemana === 1 || diaSemana === 2) {
@@ -120,9 +145,11 @@ export class ReservarLloronaPage implements OnInit {
     let horaCierre = '21:00';
 
     if (diaSemana >= 3 && diaSemana <= 5) { // Miércoles a Viernes (3:00 PM - 9:00 PM)
-      horaApertura = '15:00'; horaCierre = '21:00';
+      horaApertura = '15:00'; 
+      horaCierre = '21:00';
     } else if (diaSemana === 6 || diaSemana === 0) { // Sábado y Domingo (2:00 PM - 10:00 PM)
-      horaApertura = '14:00'; horaCierre = '22:00';
+      horaApertura = '14:00'; 
+      horaCierre = '22:00';
     }
 
     if (horaStr < horaApertura || horaStr > horaCierre) {
@@ -160,7 +187,6 @@ export class ReservarLloronaPage implements OnInit {
 
       const mesasDeZona = this.restauranteLayout[this.zona] || [];
 
-      // Helper para comprobar si una mesa (o cualquiera de sus componentes fusionados) está ocupada
       const mesaEstaOcupada = (m: any) => {
         const mIdStr = m.id.toString();
         if (idsMesasOcupadas.includes(mIdStr)) return true;
@@ -184,7 +210,6 @@ export class ReservarLloronaPage implements OnInit {
       if (mesaIdeal) return mesaIdeal.id;
 
       const cualquierMesaLibre = mesasDeZona.find((m: any) => !mesaEstaOcupada(m));
-
       if (cualquierMesaLibre) return cualquierMesaLibre.id;
 
     } catch (error) {
@@ -255,7 +280,8 @@ export class ReservarLloronaPage implements OnInit {
       email: this.email.trim() || null,
       nota: this.nota.trim() || null,
       estado: 'reservada',
-      isNewRecord: true
+      isNewRecord: true,
+      tipoCorreo: 'crear' // ✅ CORREGIDO: Se agregó para que el servidor envíe el correo de confirmación
     };
 
     try {

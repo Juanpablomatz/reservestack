@@ -17,7 +17,7 @@ const SECRET_KEY = process.env.JWT_SECRET || 'reservestack_jwt_secret_key_2026_p
 const PORT = process.env.PORT || 3000;
 
 // =================================================================
-// CONFIGURACIÓN DE SEGURIDAD: CORS RESTRESTINGIDO
+// CONFIGURACIÓN DE SEGURIDAD: CORS RESTRINGIDO
 // =================================================================
 const ORIGENES_PERMITIDOS = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
@@ -152,8 +152,6 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
             <tr><td style="padding: 6px 0; color: #768f9e;">MESA:</td><td style="padding: 6px 0; color: ${colorTema}; text-align: right;"><b>Mesa ${reserva.idMesa}</b></td></tr>
           </table>
         </div>
-        
-        ${reserva.nota ? `<p style="color:${colorTema}; font-style:italic; text-align:center;">"${reserva.nota}"</p>` : ''}
         
         <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #243141;">
           <p style="font-size: 12px; color: #768f9e; margin-bottom: 12px;">¿Cambiaste de planes y deseas cancelar tu visita?</p>
@@ -333,7 +331,7 @@ app.post('/api/publico/reservas', limitadorClientePublico, async (req, res) => {
     const idRestNum = Number(idRestaurante);
     const reservasActualizadas = await obtenerReservasPorRestaurante(idRestNum);
 
-    //  Emisión estricta en vivo vía WebSockets por restaurante
+    // Emisión estricta en vivo vía WebSockets por restaurante
     if (idRestNum === 1) {
       const reservasPietra = await obtenerReservasPietra();
       io.emit('actualizar_pietra', reservasPietra);

@@ -38,7 +38,7 @@ export const routes: Routes = [
   }, 
   {
   path: 'reservar-pietra',
-  loadComponent: () => import('./reservar-pietra/reservar-pietra.page').then(m => m.ReservarPage)
+  loadComponent: () => import('./reservar-pietra/reservar-pietra.page').then(m => m.ReservarPietraPage)
   },
   {
     path: 'reservar-llorona',

@@ -724,7 +724,12 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       const elemento = document.getElementById(`mesa-${idMesaKey}`) as HTMLElement;
       if (!elemento) return;
 
-      elemento.classList.remove('libre', 'seleccionable');
+      elemento.classList.remove('libre');
+      if (this.modoMover) {
+        elemento.classList.add('seleccionable');
+      } else {
+        elemento.classList.remove('seleccionable');
+      }
       elemento.setAttribute('data-info', JSON.stringify(arr));
 
       if (arr.length === 1) {
@@ -830,7 +835,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   ejecutarMover(idMesaNueva: any, zonaNueva: any) {
     this.modoMover = false;
     const avisoMover = document.getElementById('aviso-mover');
-    if (avisoMover) avisoMover.classList.add('oculto'); // ✅ ÚNICO CAMBIO: Cambiado de remove a add
+    if (avisoMover) avisoMover.classList.add('oculto');
     
     const res = this.todasLasReservas.find(r => Number(r.id) === Number(this.reservaAMoverId));
     if (res) {
@@ -842,6 +847,8 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         
         this.guardarReservaEnServidor(res); 
     }
+    this.reservaAMoverId = null;
+    this.dibujarMesas(this.zonaActiva);
     this.actualizarVistaCompleta();
   }
 
@@ -960,7 +967,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       if (singleInfoBox) singleInfoBox.style.display = 'grid';
       const resTemp = arrReservas[0];
       const realRes = this.todasLasReservas.find(r => Number(r.id) === Number(resTemp.id)) || resTemp;
-      this.reservaAMoverId = Number(realRes.id);
 
       elTxt('pop-mesa-pax', `${realRes.personas} / ${mesa.c}`);
       elTxt('pop-cliente-nombre', realRes.nombre || 'Cliente');
@@ -1008,17 +1014,17 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         crearBotonPop('Marcar Llegada', 'btn-llegada', 'fa-bell-concierge', () => {
           popover.classList.add('oculto');
           realRes.estado = 'ocupada';
-          this.guardarReservaEnServidor(realRes); // Sin correo de llegada
+          this.guardarReservaEnServidor(realRes);
           this.actualizarVistaCompleta();
         });
         crearBotonPop('Mover Mesa', 'btn-mover', 'fa-arrows-alt', () => {
           popover.classList.add('oculto');
+          this.reservaAMoverId = Number(realRes.id);
           this.modoMover = true;
           const avisoMover = document.getElementById('aviso-mover');
           if (avisoMover) avisoMover.classList.remove('oculto');
           this.dibujarMesas(this.zonaActiva);
         });
-        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR DESDE EL POPOVER
         crearBotonPop('Cancelar', 'btn-cancelar', 'fa-trash-alt', () => {
           popover.classList.add('oculto');
           if (confirm('¿Cancelar la reserva y notificar al cliente por correo?')) {
@@ -1028,7 +1034,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           }
         });
       } else if (realRes.estado === 'ocupada') {
-        // 🛡️ MESA OCUPADA: Se oculta el botón CANCELAR
         crearBotonPop('Ver Info', 'btn-info', 'fa-info-circle', () => {
           popover.classList.add('oculto');
           this.mostrarDetalleReserva(realRes);
@@ -1041,6 +1046,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         });
         crearBotonPop('Mover Mesa', 'btn-mover', 'fa-arrows-alt', () => {
           popover.classList.add('oculto');
+          this.reservaAMoverId = Number(realRes.id);
           this.modoMover = true;
           const avisoMover = document.getElementById('aviso-mover');
           if (avisoMover) avisoMover.classList.remove('oculto');
@@ -1107,7 +1113,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           botonEstadoHtml = `<button class="btn-llegada" title="Desbloquear"><i class="fas fa-unlock"></i> Desbloquear</button>`;
         }
 
-        // 🛡️ SI ESTÁ OCUPADA O BLOQUEADA, NO SE MUESTRA BOTÓN CANCELAR
         const mostrarBotonCancelar = realItem.estado !== 'ocupada' && realItem.estado !== 'bloqueada';
 
         cardItem.innerHTML = `
@@ -1133,7 +1138,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           e.stopPropagation();
           popover.classList.add('oculto');
           realItem.estado = 'ocupada';
-          this.guardarReservaEnServidor(realItem); // Sin correo de llegada
+          this.guardarReservaEnServidor(realItem);
           this.actualizarVistaCompleta();
         });
 
@@ -1151,16 +1156,17 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           this.mostrarDetalleReserva(realItem);
         });
 
+        // ✅ CORREGIDO: Asignación explícita del ID a mover en múltiples reservas
         cardItem.querySelector('.btn-mover')?.addEventListener('click', (e) => {
           e.stopPropagation();
           popover.classList.add('oculto');
+          this.reservaAMoverId = Number(realItem.id);
           this.modoMover = true;
           const avisoMover = document.getElementById('aviso-mover');
           if (avisoMover) avisoMover.classList.remove('oculto');
           this.dibujarMesas(this.zonaActiva);
         });
 
-        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR DESDE MÚLTIPLES
         cardItem.querySelector('.btn-cancelar')?.addEventListener('click', (e) => {
           e.stopPropagation();
           popover.classList.add('oculto');
@@ -1251,7 +1257,15 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       });
     });
 
-    document.querySelectorAll('.modal-close-btn, #btn-cancelar-mover, #close-nueva-reserva, #lista-mesa-close-btn, #close-walkin, #btn-close-popover').forEach(btn => {
+    // ✅ CORREGIDO: Handler específico para el botón de cancelar mover mesa
+    document.getElementById('btn-cancelar-mover')?.addEventListener('click', () => {
+      this.modoMover = false;
+      this.reservaAMoverId = null;
+      document.getElementById('aviso-mover')?.classList.add('oculto');
+      this.dibujarMesas(this.zonaActiva);
+    });
+
+    document.querySelectorAll('.modal-close-btn, #close-nueva-reserva, #lista-mesa-close-btn, #close-walkin, #btn-close-popover').forEach(btn => {
       btn.addEventListener('click', (e: any) => {
         const overlay = e.target.closest('.modal-overlay, .popover-overlay');
         if (overlay) overlay.classList.add('oculto');
@@ -1545,7 +1559,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       if (reserva.estado === 'reservada' || reserva.estado === 'confirmada') {
         crearBoton('Marcar Llegada', 'btn-llegada', 'fa-bell-concierge', () => {
           reserva.estado = 'ocupada';
-          this.guardarReservaEnServidor(reserva); // Sin correo de llegada
+          this.guardarReservaEnServidor(reserva);
           this.actualizarVistaCompleta();
         });
         crearBoton('Editar Datos', 'btn-editar-datos', 'fa-pen', () => this.abrirEdicionReserva(reserva));
@@ -1556,7 +1570,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           if (avisoMover) avisoMover.classList.remove('oculto');
           this.dibujarMesas(this.zonaActiva);
         });
-        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR DESDE EL DETALLE
         crearBoton('Cancelar por No-Show (15 min)', 'btn-cancelar', 'fa-trash-alt', () => {
           if (confirm('¿Cancelar por tolerancia de 15 minutos vencida y notificar por correo?')) {
             reserva.estado = 'cancelada';
@@ -1565,7 +1578,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           }
         });
       } else if (reserva.estado === 'ocupada') {
-        // 🛡️ MESA OCUPADA: Se oculta el botón CANCELAR
         crearBoton('Liberar Mesa', 'btn-liberar', 'fa-broom', () => {
           reserva.estado = 'liberada';
           this.guardarReservaEnServidor(reserva);

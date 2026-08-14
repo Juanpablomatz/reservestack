@@ -30,19 +30,18 @@ import {
   standalone: true,
   imports: [
     IonContent, 
-    CommonModule, 
-    FormsModule,
     IonInput,
     IonSelect,
     IonSelectOption,
     IonTextarea,
     IonButton,
-    IonIcon
+    IonIcon,
+    CommonModule, 
+    FormsModule
   ]
 })
-export class ReservarPage implements OnInit {
+export class ReservarPietraPage implements OnInit {
 
-  // Modelo de datos del formulario de Rosa Mexicano
   fecha: string = '';
   hora: string = '';
   zona: string = 'Terraza';
@@ -54,16 +53,17 @@ export class ReservarPage implements OnInit {
   nota: string = '';
 
   todayDate: string = ''; 
+  cargando: boolean = false;
 
-  // Zonas oficiales de Rosa Mexicano
-  zonasDisponibles: string[] = ['Terraza', 'Piso', 'Jardín', 'Cava'];
+  // Zonas oficiales de Pietra Cucina
+  zonasDisponibles: string[] = ['Terraza', 'Nivel bajo', 'Nivel medio', 'Pared lloron'];
 
-  // Distribución de respaldo de Rosa Mexicano
+  // Distribución de respaldo de Pietra Cucina
   restauranteLayout: any = {
-    'Terraza': [{id:1,c:4},{id:2,c:4},{id:3,c:4},{id:4,c:4}],
-    'Piso': [{id:10,c:4},{id:11,c:4},{id:12,c:4},{id:13,c:4},{id:14,c:4}],
-    'Jardín': [{id:20,c:4},{id:21,c:4},{id:22,c:4},{id:23,c:4}],
-    'Cava': [{id:30,c:4},{id:31,c:4},{id:32,c:4}]
+    'Terraza': [{id:100,c:4},{id:101,c:4},{id:102,c:4},{id:103,c:4},{id:104,c:4},{id:105,c:4},{id:106,c:4}],
+    'Nivel bajo': [{id:90,c:4},{id:91,c:4},{id:92,c:4}],
+    'Nivel medio': [{id:80,c:4},{id:81,c:4},{id:82,c:4},{id:83,c:4},{id:84,c:4},{id:85,c:4},{id:86,c:4}],
+    'Pared lloron': [{id:70,c:4},{id:71,c:4},{id:72,c:4},{id:73,c:4},{id:74,c:4},{id:75,c:4},{id:76,c:4}]
   };
 
   readonly BASE_URL = 'http://localhost:3000';
@@ -108,16 +108,19 @@ export class ReservarPage implements OnInit {
 
   async cargarDisenoMesas() {
     try {
-      const resp = await fetch(`${this.BASE_URL}/api/restaurantes/2/diseno`);
+      const resp = await fetch(`${this.BASE_URL}/api/pietra/diseno`);
       const data = await resp.json();
       
       const tieneMesas = Object.values(data).some((arr: any) => arr && arr.length > 0);
       if (tieneMesas) {
         this.restauranteLayout = data;
         this.zonasDisponibles = Object.keys(data);
+        if (!this.zonasDisponibles.includes(this.zona) && this.zonasDisponibles.length > 0) {
+          this.zona = this.zonasDisponibles[0];
+        }
       }
     } catch (e) {
-      console.warn('⚠️ Usando distribución de mesas de Rosa Mexicano de respaldo.');
+      console.warn('⚠️ Usando distribución de mesas de Pietra Cucina de respaldo.');
     }
   }
 
@@ -137,7 +140,7 @@ export class ReservarPage implements OnInit {
       const nomDia = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][diaSemana];
       return { 
         valido: false, 
-        mensaje: `Nuestro horario de atención los ${nomDia}s en Rosa Mexicano es de ${horaApertura} a ${horaCierre} hs.` 
+        mensaje: `Nuestro horario de atención los ${nomDia}s en Pietra Cucina es de ${horaApertura} a ${horaCierre} hs.` 
       };
     }
 
@@ -154,7 +157,7 @@ export class ReservarPage implements OnInit {
 
   async buscarMesaDisponible(personasRequeridas: number): Promise<number> {
     try {
-      const resp = await fetch(`${this.BASE_URL}/api/restaurantes/2/reservas`);
+      const resp = await fetch(`${this.BASE_URL}/api/pietra/reservas`);
       const todasLasReservas = await resp.json();
 
       const ocupadasHoy = todasLasReservas.filter((r: any) => 
@@ -193,11 +196,11 @@ export class ReservarPage implements OnInit {
       if (cualquierMesaLibre) return cualquierMesaLibre.id;
 
     } catch (error) {
-      console.error('Error al buscar mesa en Rosa Mexicano:', error);
+      console.error('Error al buscar mesa en Pietra Cucina:', error);
     }
 
     const mesasRespaldo = this.restauranteLayout[this.zona] || [];
-    return mesasRespaldo.length > 0 ? mesasRespaldo[0].id : 1;
+    return mesasRespaldo.length > 0 ? mesasRespaldo[0].id : 100;
   }
 
   async confirmarReservacion() {
@@ -237,11 +240,13 @@ export class ReservarPage implements OnInit {
       return;
     }
 
+    this.cargando = true;
     const idMesaAsignada = await this.buscarMesaDisponible(pax);
     const nombreCompleto = `${this.nombre.trim()} ${this.apellido.trim()}`;
 
     const nuevaReserva = {
       id: Date.now(), 
+      idRestaurante: 1, // Pietra Cucina
       fecha: this.fecha,
       hora: this.hora,
       zona: this.zona,
@@ -257,23 +262,22 @@ export class ReservarPage implements OnInit {
     };
 
     try {
-      // ⚡ ENVÍO AL ENDPOINT DIRECTO DE ROSA MEXICANO (RESTAURANTE 2)
-      const response = await fetch(`${this.BASE_URL}/api/restaurantes/2/reservas`, {
+      const response = await fetch(`${this.BASE_URL}/api/pietra/reservas`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevaReserva)
       });
       const data = await response.json();
+      this.cargando = false;
 
-      if (data.success) {
-        alert(`¡Reserva confirmada con éxito en Rosa Mexicano!\nTe hemos asignado la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmación enviada a: ${this.email || 'tu correo'}`);
+      if (data.success || response.ok) {
+        alert(`¡Reserva confirmada con éxito en Pietra Cucina!\nTe hemos asignado la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmación enviada a: ${this.email || 'tu correo'}`);
         this.limpiarFormulario();
       } else {
         alert('Error al procesar tu registro. Por favor vuelve a intentarlo.');
       }
     } catch (e) {
+      this.cargando = false;
       console.error('Error al enviar la reserva:', e);
       alert('No se pudo conectar al servidor de reservas.');
     }

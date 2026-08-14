@@ -125,7 +125,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
 
   async guardarReservaEnServidor(reserva: any, tipoCorreo?: string) {
     try {
-      const payload = { ...reserva };
+      const payload = { ...reserva, idRestaurante: 1 };
       if (tipoCorreo) {
         payload.tipoCorreo = tipoCorreo;
       }
@@ -143,7 +143,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
 
       delete reserva.isNewRecord;
       delete reserva.tipoCorreo;
-      console.log('Sincronizado con MySQL:', data.message);
+      console.log('Pietra Cucina - Sincronizado con MySQL:', data.message);
     } catch (e) {
       alert(`No se guardó la operación en Pietra Cucina. ${e instanceof Error ? e.message : 'Revisa la conexión con el servidor.'}`);
       console.error('❌ Error de conexión al sincronizar con MySQL:', e);
@@ -575,16 +575,27 @@ export class PietraPage implements AfterViewInit, OnDestroy {
         if (isSelectedEditor) {
           divMesa.querySelector('.btn-edit-pax')?.addEventListener('click', (e) => {
             e.stopPropagation();
+            const nuevoId = prompt(`Nuevo número/etiqueta para la Mesa ${textoNumero}:`, textoNumero.toString());
+            if (nuevoId && nuevoId.trim() !== '') {
+              const valTrim = nuevoId.trim();
+              const numInt = parseInt(valTrim, 10);
+              if (!isNaN(numInt)) {
+                mesa.id = numInt;
+                mesa.displayId = valTrim;
+              } else {
+                mesa.displayId = valTrim;
+              }
+            }
             const nuevaCap = prompt(`Cambiar capacidad para la Mesa ${textoNumero} (Mínimo 1, Máximo 50):`, mesa.c.toString());
             if (nuevaCap) {
               let capNum = parseInt(nuevaCap, 10);
               if (!isNaN(capNum) && capNum > 0) {
                 if (capNum > 50) capNum = 50; 
                 mesa.c = capNum;
-                this.guardarLayoutFechaActual();
-                this.dibujarMesas(this.zonaActiva);
               }
             }
+            this.guardarLayoutFechaActual();
+            this.dibujarMesas(this.zonaActiva);
           });
 
           divMesa.querySelector('.btn-unlink-mesa')?.addEventListener('click', (e) => {
@@ -741,7 +752,12 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       const elemento = document.getElementById(`mesa-${idMesaKey}`) as HTMLElement;
       if (!elemento) return;
 
-      elemento.classList.remove('libre', 'seleccionable');
+      elemento.classList.remove('libre');
+      if (this.modoMover) {
+        elemento.classList.add('seleccionable');
+      } else {
+        elemento.classList.remove('seleccionable');
+      }
       elemento.setAttribute('data-info', JSON.stringify(arr));
 
       if (arr.length === 1) {
@@ -854,11 +870,9 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     this.modoMover = false;
     this.mesaSeleccionadaTemp = null;
 
-    // 1. Ocultar el aviso morado de la pantalla
     const avisoMover = document.getElementById('aviso-mover');
-    if (avisoMover) avisoMover.classList.add('oculto'); // ✅ Cambiado remove por add
+    if (avisoMover) avisoMover.classList.add('oculto'); 
 
-    // 2. Buscar y actualizar la reserva
     const res = this.todasLasReservas.find(r => Number(r.id) === Number(this.reservaAMoverId));
     if (res) {
         res.idMesa = idMesaNueva.toString();
@@ -870,7 +884,8 @@ export class PietraPage implements AfterViewInit, OnDestroy {
         this.guardarReservaEnServidor(res); 
     }
 
-    this.reservaAMoverId = null; // Limpiar ID de reserva a mover
+    this.reservaAMoverId = null;
+    this.dibujarMesas(this.zonaActiva);
     this.actualizarVistaCompleta();
   }
 
@@ -989,7 +1004,6 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       if (singleInfoBox) singleInfoBox.style.display = 'grid';
       const resTemp = arrReservas[0];
       const realRes = this.todasLasReservas.find(r => Number(r.id) === Number(resTemp.id)) || resTemp;
-      this.reservaAMoverId = Number(realRes.id);
 
       elTxt('pop-mesa-pax', `${realRes.personas} / ${mesa.c}`);
       elTxt('pop-cliente-nombre', realRes.nombre || 'Cliente');
@@ -1037,17 +1051,17 @@ export class PietraPage implements AfterViewInit, OnDestroy {
         crearBotonPop('Marcar Llegada', 'btn-llegada', 'fa-bell-concierge', () => {
           popover.classList.add('oculto');
           realRes.estado = 'ocupada';
-          this.guardarReservaEnServidor(realRes); // Sin correo de llegada
+          this.guardarReservaEnServidor(realRes);
           this.actualizarVistaCompleta();
         });
         crearBotonPop('Mover Mesa', 'btn-mover', 'fa-arrows-alt', () => {
           popover.classList.add('oculto');
+          this.reservaAMoverId = Number(realRes.id);
           this.modoMover = true;
           const avisoMover = document.getElementById('aviso-mover');
           if (avisoMover) avisoMover.classList.remove('oculto');
           this.dibujarMesas(this.zonaActiva);
         });
-        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR DESDE EL POPOVER
         crearBotonPop('Cancelar', 'btn-cancelar', 'fa-trash-alt', () => {
           popover.classList.add('oculto');
           if (confirm('¿Cancelar la reserva y notificar al cliente por correo?')) {
@@ -1057,7 +1071,6 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           }
         });
       } else if (realRes.estado === 'ocupada') {
-        // 🛡️ MESA OCUPADA: Se oculta el botón CANCELAR
         crearBotonPop('Ver Info', 'btn-info', 'fa-info-circle', () => {
           popover.classList.add('oculto');
           this.mostrarDetalleReserva(realRes);
@@ -1070,6 +1083,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
         });
         crearBotonPop('Mover Mesa', 'btn-mover', 'fa-arrows-alt', () => {
           popover.classList.add('oculto');
+          this.reservaAMoverId = Number(realRes.id);
           this.modoMover = true;
           const avisoMover = document.getElementById('aviso-mover');
           if (avisoMover) avisoMover.classList.remove('oculto');
@@ -1136,7 +1150,6 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           botonEstadoHtml = `<button class="btn-llegada" title="Desbloquear"><i class="fas fa-unlock"></i> Desbloquear</button>`;
         }
 
-        // 🛡️ SI ESTÁ OCUPADA O BLOQUEADA, NO SE MUESTRA BOTÓN CANCELAR
         const mostrarBotonCancelar = realItem.estado !== 'ocupada' && realItem.estado !== 'bloqueada';
 
         cardItem.innerHTML = `
@@ -1162,7 +1175,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           e.stopPropagation();
           popover.classList.add('oculto');
           realItem.estado = 'ocupada';
-          this.guardarReservaEnServidor(realItem); // Sin correo de llegada
+          this.guardarReservaEnServidor(realItem);
           this.actualizarVistaCompleta();
         });
 
@@ -1180,16 +1193,17 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           this.mostrarDetalleReserva(realItem);
         });
 
+        // ✅ CORREGIDO: Asignación explícita del ID a mover en múltiples reservas de Pietra
         cardItem.querySelector('.btn-mover')?.addEventListener('click', (e) => {
           e.stopPropagation();
           popover.classList.add('oculto');
+          this.reservaAMoverId = Number(realItem.id);
           this.modoMover = true;
           const avisoMover = document.getElementById('aviso-mover');
           if (avisoMover) avisoMover.classList.remove('oculto');
           this.dibujarMesas(this.zonaActiva);
         });
 
-        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR DESDE MÚLTIPLES
         cardItem.querySelector('.btn-cancelar')?.addEventListener('click', (e) => {
           e.stopPropagation();
           popover.classList.add('oculto');
@@ -1278,7 +1292,15 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       });
     });
 
-    document.querySelectorAll('.modal-close-btn, #btn-cancelar-mover, #close-nueva-reserva, #lista-mesa-close-btn, #close-walkin, #btn-close-popover').forEach(btn => {
+    // ✅ CORREGIDO: Handler específico para el botón cancelar mover de Pietra
+    document.getElementById('btn-cancelar-mover')?.addEventListener('click', () => {
+      this.modoMover = false;
+      this.reservaAMoverId = null;
+      document.getElementById('aviso-mover')?.classList.add('oculto');
+      this.dibujarMesas(this.zonaActiva);
+    });
+
+    document.querySelectorAll('.modal-close-btn, #close-nueva-reserva, #lista-mesa-close-btn, #close-walkin, #btn-close-popover').forEach(btn => {
       btn.addEventListener('click', (e: any) => {
         const overlay = e.target.closest('.modal-overlay, .popover-overlay');
         if (overlay) overlay.classList.add('oculto');
@@ -1389,7 +1411,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       const selectZona = document.getElementById('res-zona') as HTMLSelectElement;
       if (selectZona && reserva.zona) {
         selectZona.value = reserva.zona;
-        this.actualizarSelectMesas(reserva.zona, reserva.idMesa);
+        this.actualizarSelectMesas(selectZona.value, reserva.idMesa);
       }
       
       const inputNotas = (document.getElementById('res-notas') as HTMLTextAreaElement) || (document.getElementById('res-notes') as HTMLTextAreaElement);
@@ -1572,7 +1594,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       if (reserva.estado === 'reservada' || reserva.estado === 'confirmada') {
         crearBoton('Marcar Llegada', 'btn-llegada', 'fa-bell-concierge', () => {
           reserva.estado = 'ocupada';
-          this.guardarReservaEnServidor(reserva); // Sin correo de llegada
+          this.guardarReservaEnServidor(reserva);
           this.actualizarVistaCompleta();
         });
         crearBoton('Editar Datos', 'btn-editar-datos', 'fa-pen', () => this.abrirEdicionReserva(reserva));
@@ -1583,7 +1605,6 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           if (avisoMover) avisoMover.classList.remove('oculto');
           this.dibujarMesas(this.zonaActiva);
         });
-        // 📧 ENVÍA CORREO DE CANCELACIÓN AL CANCELAR DESDE EL DETALLE
         crearBoton('Cancelar por No-Show (15 min)', 'btn-cancelar', 'fa-trash-alt', () => {
           if (confirm('¿Cancelar por tolerancia de 15 minutos vencida y notificar por correo?')) {
             reserva.estado = 'cancelada';
@@ -1592,7 +1613,6 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           }
         });
       } else if (reserva.estado === 'ocupada') {
-        // 🛡️ MESA OCUPADA: Se oculta el botón CANCELAR
         crearBoton('Liberar Mesa', 'btn-liberar', 'fa-broom', () => {
           reserva.estado = 'liberada';
           this.guardarReservaEnServidor(reserva);
@@ -1632,7 +1652,6 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     if (modalDetalle) modalDetalle.classList.remove('oculto');
   }
 
-  // 📊 MÉTODOS DE ANALÍTICA Y GRÁFICAS PIETRA CUCINA
   async cargarChartJS(): Promise<void> {
     return new Promise((resolve) => {
       if ((window as any).Chart) {
