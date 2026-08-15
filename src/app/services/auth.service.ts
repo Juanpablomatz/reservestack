@@ -2,12 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly BASE_URL = 'http://localhost:3000';
+  private readonly BASE_URL = environment.apiUrl;
   private readonly TOKEN_KEY = 'reservestack_token';
   private readonly USER_KEY = 'reservestack_user';
 
