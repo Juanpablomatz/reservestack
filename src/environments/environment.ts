@@ -1,5 +1,5 @@
 export const environment = {
-  production: false,
-  apiUrl: 'https://promoting-decided-encounter-software.trycloudflare.com',
-  socketUrl: 'https://promoting-decided-encounter-software.trycloudflare.com'
+  production: true,
+  apiUrl: 'https://gilbert-builder-demonstrate-configured.trycloudflare.com',
+  socketUrl: 'https://gilbert-builder-demonstrate-configured.trycloudflare.com'
 };
