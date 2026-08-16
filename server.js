@@ -17,9 +17,10 @@ app.set('trust proxy', 1);
 const SECRET_KEY = process.env.JWT_SECRET || 'reservestack_jwt_secret_key_2026_prod';
 const PORT = process.env.PORT || 3000;
 
-// API Key de Resend (Envía por HTTPS Puerto 443 sin bloqueos de Render)
-// API Key de Resend desde variables de entorno
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
+// Configuración de Brevo API y Correo Oficial Verificado
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const SENDER_EMAIL = process.env.EMAIL_USER || 'reservaciones54@gmail.com';
+
 // CORS Cloud & Local
 app.use(cors({
   origin: '*',
@@ -36,7 +37,7 @@ const io = new Server(server, {
   }
 });
 
-// Rate limiters
+// Rate limiters con validación adaptada para Render
 const limitadorGeneral = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 2000,
@@ -67,10 +68,14 @@ const TEMAS_RESTAURANTES = {
 };
 
 // =================================================================
-// FUNCIÓN DE ENVÍO DE CORREO VÍA HTTPS API (RESEND - 100% CLOUD)
+// FUNCIÓN DE ENVÍO DE CORREO VÍA HTTPS API (BREVO - UNIVERSAL 443)
 // =================================================================
 async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveStack', idRestaurante = 1) {
   if (!reserva.email || reserva.email.trim() === '') return;
+  if (!BREVO_API_KEY) {
+    console.warn('⚠️ [BREVO] No se ha configurado la variable BREVO_API_KEY en Render.');
+    return;
+  }
 
   const infoRest = TEMAS_RESTAURANTES[idRestaurante] || { nombre: nombreRestaurante, color: '#d4af37' };
   const colorTema = infoRest.color;
@@ -132,29 +137,38 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
   }
 
   try {
-    const response = await fetch('https://api.resend.com/emails', {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
+        'api-key': BREVO_API_KEY,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: JSON.stringify({
-        from: `${infoRest.nombre} <onboarding@resend.dev>`,
-        to: [reserva.email],
+        sender: {
+          name: infoRest.nombre,
+          email: SENDER_EMAIL
+        },
+        to: [
+          {
+            email: reserva.email,
+            name: reserva.nombre || 'Cliente'
+          }
+        ],
         subject: asunto,
-        html: contenidoHtml
+        htmlContent: contenidoHtml
       })
     });
 
     const data = await response.json();
 
     if (response.ok) {
-      console.log(`✅ [RESEND] Correo enviado exitosamente a ${reserva.email} (ID: ${data.id})`);
+      console.log(`✅ [BREVO] Correo enviado exitosamente desde ${SENDER_EMAIL} a ${reserva.email} (MessageId: ${data.messageId})`);
     } else {
-      console.error(`❌ [RESEND ERROR]`, data);
+      console.error(`❌ [BREVO ERROR]`, data);
     }
   } catch (err) {
-    console.error(`❌ Error en petición Resend a ${reserva.email}:`, err.message);
+    console.error(`❌ Error en petición a Brevo para ${reserva.email}:`, err.message);
   }
 }
 
@@ -417,7 +431,7 @@ app.post('/api/auth/login', limitadorAuth, async (req, res) => {
 
     if (!usuarioEncontrado) {
       const envPass = process.env.ADMIN_PASS || 'hostess2026';
-      const envUser = (process.env.EMAIL_USER || 'reservacionesrestaurantes.17@gmail.com').toLowerCase();
+      const envUser = (process.env.EMAIL_USER || 'reservaciones54@gmail.com').toLowerCase();
 
       if ((usuarioOEmail === envUser || usuarioOEmail === 'admin' || usuarioOEmail === 'hostess') && (password === envPass || password === 'hostess2026')) {
         usuarioEncontrado = { id: 1, nombre: 'Hostess Principal', rol: 'admin', email: usuarioOEmail };
