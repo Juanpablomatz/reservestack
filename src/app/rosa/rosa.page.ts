@@ -2,6 +2,7 @@ import { Component, AfterViewInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Chart, registerables } from 'chart.js';
+import { environment } from '../../environments/environment';
 import { AuthService } from '../services/auth.service';
 
 Chart.register(...registerables);
@@ -50,8 +51,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   respaldoRestaurante: string = '';
   resolverTipoFusion: ((esPermanente: boolean | null) => void) | null = null;
 
-  readonly BASE_URL = 'http://localhost:3000';
-
+  readonly BASE_URL = environment.apiUrl; 
   constructor(private authService: AuthService, private ngZone: NgZone) {
     this.disenoMaestro = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
     this.cargarLayoutPorFecha(this.fechaSeleccionada);

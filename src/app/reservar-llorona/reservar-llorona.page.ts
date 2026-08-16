@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../../environments/environment';
 import { 
   IonContent, 
   IonInput, 
@@ -66,8 +67,7 @@ export class ReservarLloronaPage implements OnInit {
     ]
   };
 
-  readonly BASE_URL = 'http://localhost:3000';
-
+  readonly BASE_URL = environment.apiUrl;
   constructor() {
     addIcons({
       calendarOutline,

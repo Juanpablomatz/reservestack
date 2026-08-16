@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../../environments/environment';
 import { 
   IonContent, 
   IonInput, 
@@ -66,8 +67,7 @@ export class ReservarPietraPage implements OnInit {
     'Pared lloron': [{id:70,c:4},{id:71,c:4},{id:72,c:4},{id:73,c:4},{id:74,c:4},{id:75,c:4},{id:76,c:4}]
   };
 
-  readonly BASE_URL = 'http://localhost:3000';
-
+  readonly BASE_URL = environment.apiUrl;
   constructor() {
     addIcons({
       calendarOutline,
