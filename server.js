@@ -12,6 +12,9 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const server = http.createServer(app); 
 
+// ✅ SOLUCIÓN AL ERROR DE PROXY EN RENDER
+app.set('trust proxy', 1);
+
 const SECRET_KEY = process.env.JWT_SECRET || 'reservestack_jwt_secret_key_2026_prod';
 const PORT = process.env.PORT || 3000;
 
@@ -31,52 +34,60 @@ const io = new Server(server, {
   }
 });
 
-// Rate limiters
+// Rate limiters con validación adaptada para Render
 const limitadorGeneral = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 2000,
+  validate: { xForwardedForHeader: false },
   message: { success: false, message: 'Demasiadas peticiones. Intenta en unos minutos.' }
 });
 
 const limitadorAuth = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
+  validate: { xForwardedForHeader: false },
   message: { success: false, message: 'Demasiados intentos de acceso. Intenta en 15 minutos.' }
 });
 
 const limitadorClientePublico = rateLimit({
   windowMs: 24 * 60 * 60 * 1000,
   max: 30,
+  validate: { xForwardedForHeader: false },
   message: { success: false, message: 'Has alcanzado el límite máximo de reservaciones por día.' }
 });
 
 app.use(limitadorGeneral);
 
 // =================================================================
-// CONFIGURACIÓN DE CORREO (NODEMAILER DIRECTO SSL PUERTO 465)
+// CONFIGURACIÓN DE CORREO (FORZANDO IPv4 Y SERVICIO GMAIL PARA RENDER)
 // =================================================================
 const EMAIL_USER = process.env.EMAIL_USER || 'reservacionesrestaurantes.17@gmail.com';
 const EMAIL_PASS = (process.env.EMAIL_PASS || 'sdvhwfyswryldhwz').replace(/\s+/g, '');
 
 const transporter = nodemailer.createTransport({
+  service: 'gmail',
   host: 'smtp.gmail.com',
   port: 465,
-  secure: true, // SSL directo
+  secure: true,
+  family: 4, // 👈 FORZAR IPv4 (Soluciona el error ENETUNREACH en Render)
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS
   },
   tls: {
     rejectUnauthorized: false
-  }
+  },
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 15000
 });
 
 // Verificar conexión SMTP al arrancar
 transporter.verify((error, success) => {
   if (error) {
-    console.error('❌ Error de conexión SMTP Nodemailer:', error.message);
+    console.error('❌ Error de verificación SMTP:', error.message);
   } else {
-    console.log('📧 Servidor SMTP de correo conectado y listo para enviar.');
+    console.log('📧 Servidor SMTP conectado en IPv4 y listo para enviar correos.');
   }
 });
 
