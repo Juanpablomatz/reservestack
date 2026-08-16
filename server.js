@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const db = require('./database');
-const nodemailer = require('nodemailer'); 
 const http = require('http'); 
 const { Server } = require('socket.io'); 
 const rateLimit = require('express-rate-limit');
@@ -12,12 +11,15 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const server = http.createServer(app); 
 
-// ✅ SOLUCIÓN AL ERROR DE PROXY EN RENDER
+// Configuración de Proxy para Render
 app.set('trust proxy', 1);
 
 const SECRET_KEY = process.env.JWT_SECRET || 'reservestack_jwt_secret_key_2026_prod';
 const PORT = process.env.PORT || 3000;
 
+// API Key de Resend (Envía por HTTPS Puerto 443 sin bloqueos de Render)
+// API Key de Resend desde variables de entorno
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 // CORS Cloud & Local
 app.use(cors({
   origin: '*',
@@ -34,7 +36,7 @@ const io = new Server(server, {
   }
 });
 
-// Rate limiters con validación adaptada para Render
+// Rate limiters
 const limitadorGeneral = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 2000,
@@ -58,45 +60,15 @@ const limitadorClientePublico = rateLimit({
 
 app.use(limitadorGeneral);
 
-// =================================================================
-// CONFIGURACIÓN DE CORREO (FORZANDO IPv4 Y SERVICIO GMAIL PARA RENDER)
-// =================================================================
-const EMAIL_USER = process.env.EMAIL_USER || 'reservacionesrestaurantes.17@gmail.com';
-const EMAIL_PASS = (process.env.EMAIL_PASS || 'sdvhwfyswryldhwz').replace(/\s+/g, '');
-
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  family: 4, // 👈 FORZAR IPv4 (Soluciona el error ENETUNREACH en Render)
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
-  },
-  connectionTimeout: 15000,
-  greetingTimeout: 15000,
-  socketTimeout: 15000
-});
-
-// Verificar conexión SMTP al arrancar
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Error de verificación SMTP:', error.message);
-  } else {
-    console.log('📧 Servidor SMTP conectado en IPv4 y listo para enviar correos.');
-  }
-});
-
 const TEMAS_RESTAURANTES = {
   1: { nombre: 'Pietra Cucina', color: '#d4af37' },  
   2: { nombre: 'Rosa Mexicano', color: '#e5007e' },  
   3: { nombre: 'Llorona Comedor', color: '#f1c40f' } 
 };
 
+// =================================================================
+// FUNCIÓN DE ENVÍO DE CORREO VÍA HTTPS API (RESEND - 100% CLOUD)
+// =================================================================
 async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveStack', idRestaurante = 1) {
   if (!reserva.email || reserva.email.trim() === '') return;
 
@@ -159,18 +131,30 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
     return;
   }
 
-  const mailOptions = {
-    from: `"${infoRest.nombre}" <${EMAIL_USER}>`, 
-    to: reserva.email,
-    subject: asunto,
-    html: contenidoHtml
-  };
-
   try {
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Correo [${tipo.toUpperCase()}] enviado exitosamente a: ${reserva.email}`);
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: `${infoRest.nombre} <onboarding@resend.dev>`,
+        to: [reserva.email],
+        subject: asunto,
+        html: contenidoHtml
+      })
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log(`✅ [RESEND] Correo enviado exitosamente a ${reserva.email} (ID: ${data.id})`);
+    } else {
+      console.error(`❌ [RESEND ERROR]`, data);
+    }
   } catch (err) {
-    console.error(`❌ Error al enviar correo Nodemailer a ${reserva.email}:`, err.message);
+    console.error(`❌ Error en petición Resend a ${reserva.email}:`, err.message);
   }
 }
 
