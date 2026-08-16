@@ -50,7 +50,8 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   respaldoRestaurante: string = '';
   resolverTipoFusion: ((esPermanente: boolean | null) => void) | null = null;
 
-  readonly BASE_URL = environment.apiUrl; 
+  readonly BASE_URL = environment.apiUrl;
+
   constructor(private authService: AuthService, private ngZone: NgZone) {
     this.disenoMaestro = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
     this.cargarLayoutPorFecha(this.fechaSeleccionada);
@@ -69,19 +70,15 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   }
 
   cargarLayoutPorFecha(fecha: string) {
+    if (this.disenoMaestro && Object.keys(this.disenoMaestro).length > 0) {
+      this.restaurante = JSON.parse(JSON.stringify(this.disenoMaestro));
+      this.asegurarCoordenadasGrid();
+      return;
+    }
+
     const keyFecha = `llorona_layout_${fecha}`;
     const layoutGuardado = localStorage.getItem(keyFecha);
     let disenoBase = this.disenoMaestro || this.PLANO_DEFECTO;
-    
-    const disenoProgramado = localStorage.getItem('llorona_diseno_permanente');
-    if (disenoProgramado) {
-      try {
-        const programacion = JSON.parse(disenoProgramado);
-        if (programacion.desde <= fecha && programacion.layout) {
-          disenoBase = programacion.layout;
-        }
-      } catch (e) {}
-    }
 
     if (layoutGuardado) {
       try {
@@ -102,25 +99,15 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
   async guardarDisenoPermanente() {
     const layoutPermanente = JSON.parse(JSON.stringify(this.restaurante));
-    localStorage.setItem('llorona_diseno_permanente', JSON.stringify({ desde: this.fechaSeleccionada, layout: layoutPermanente }));
-    
+    this.disenoMaestro = JSON.parse(JSON.stringify(layoutPermanente));
+    this.guardarLayoutFechaActual();
+
     const response = await fetch(`${this.BASE_URL}/api/restaurantes/3/diseno`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(layoutPermanente)
     });
     if (!response.ok) throw new Error('No se pudo guardar el diseño permanente en el servidor');
-
-    this.disenoMaestro = JSON.parse(JSON.stringify(layoutPermanente));
-    this.guardarLayoutFechaActual();
-
-    const prefijo = 'llorona_layout_';
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(prefijo) && key.substring(prefijo.length) >= this.fechaSeleccionada) {
-        localStorage.setItem(key, JSON.stringify(layoutPermanente));
-      }
-    }
   }
 
   async guardarReservaEnServidor(reserva: any, tipoCorreo?: string) {
@@ -153,24 +140,20 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   async cargarDisenoMesas() {
     try {
       const resp = await fetch(`${this.BASE_URL}/api/restaurantes/3/diseno`);
-      const data = await resp.json();
-      const tieneMesas = Object.values(data).some((arr: any) => arr && arr.length > 0);
-      if (tieneMesas) {
-        const layoutLimpio: any = {};
-        for (const z in data) {
-          layoutLimpio[z] = [];
-          data[z].forEach((m: any) => {
-            if (m.isMerged && m.originalTables) {
-              m.originalTables.forEach((orig: any) => layoutLimpio[z].push(orig));
-            } else {
-              layoutLimpio[z].push(m);
-            }
-          });
+      if (resp.ok) {
+        const data = await resp.json();
+        const tieneMesas = Object.values(data).some((arr: any) => arr && arr.length > 0);
+        if (tieneMesas) {
+          this.disenoMaestro = data;
+          this.restaurante = JSON.parse(JSON.stringify(data));
+          this.asegurarCoordenadasGrid();
+          this.guardarLayoutFechaActual();
+          this.dibujarMesas(this.zonaActiva);
+          return;
         }
-        this.disenoMaestro = layoutLimpio;
       }
     } catch (e) {
-      this.disenoMaestro = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
+      console.warn('⚠️ Usando distribución de mesas de Llorona Comedor local de respaldo.');
     }
     this.cargarLayoutPorFecha(this.fechaSeleccionada);
     this.dibujarMesas(this.zonaActiva);
@@ -179,8 +162,8 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   async guardarDisenoEnServidor() {
     try {
       await this.guardarDisenoPermanente();
-      console.log('📐 Nuevo diseño de mesas guardado PERMANENTEMENTE para todos los días en Llorona Comedor');
-      alert('✅ ¡Nueva distribución de mesas guardada para TODOS los días con éxito en Llorona Comedor!');
+      console.log('📐 Nuevo diseño guardado en la nube para Llorona Comedor');
+      alert('✅ ¡Nueva distribución de mesas guardada y sincronizada con éxito!');
     } catch (e) {
       console.error('❌ Error al guardar diseño permanente Llorona Comedor:', e);
       this.disenoMaestro = JSON.parse(JSON.stringify(this.restaurante));
@@ -238,11 +221,25 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       this.socket = io(this.BASE_URL);
       this.socket.emit('join_restaurante', 3);
 
-      // ⚡ NgZone + Sincronización en tiempo real para Llorona Comedor
+      // ⚡ Sincronización de Reservas en tiempo real
       this.socket.on('actualizar_llorona', (r: any[]) => { 
         this.ngZone.run(() => {
           this.todasLasReservas = r; 
           this.actualizarVistaCompleta(); 
+        });
+      });
+
+      // ⚡ Sincronización de Diseño de Mesas en tiempo real
+      this.socket.on('actualizar_diseno_llorona', (diseno: any) => {
+        this.ngZone.run(() => {
+          if (diseno && typeof diseno === 'object' && Object.keys(diseno).length > 0) {
+            this.disenoMaestro = diseno;
+            this.restaurante = JSON.parse(JSON.stringify(diseno));
+            this.asegurarCoordenadasGrid();
+            this.guardarLayoutFechaActual();
+            this.dibujarMesas(this.zonaActiva);
+            this.actualizarVistaCompleta();
+          }
         });
       });
     } catch(e) {}
@@ -375,7 +372,10 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
       let existe = false;
       for (const z in this.restaurante) {
-        if (this.restaurante[z].some((m: any) => m.id === numId)) { existe = true; break; }
+        if (this.restaurante[z].some((m: any) => m.id === numId || m.displayId === numMesa.trim())) { 
+          existe = true; 
+          break; 
+        }
       }
       if (existe) { alert('El número de mesa ya existe.'); return; }
 
@@ -383,7 +383,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       const capNum = capMesa ? parseInt(capMesa, 10) : 4;
       const finalCap = (!isNaN(capNum) && capNum > 0 && capNum <= 50) ? capNum : 4;
 
-      const nuevaMesaObj = { id: numId, c: finalCap, x: 45, y: 40 };
+      const nuevaMesaObj = { id: numId, displayId: numMesa.trim(), c: finalCap, x: 45, y: 40 };
 
       if (!this.restaurante[this.zonaActiva]) this.restaurante[this.zonaActiva] = [];
       this.restaurante[this.zonaActiva].push(nuevaMesaObj);
@@ -501,11 +501,11 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       if (this.modoEdicion) {
         let controlesHtml = '';
         if (isSelectedEditor) {
-          let btnUnlinkHtml = mesa.isMerged ? `<span class="btn-unlink-mesa" title="Separar y restaurar mesas originales"><i class="fas fa-unlink"></i></span>` : '';
+          let btnUnlinkHtml = mesa.isMerged ? `<span class="btn-unlink-mesa" title="Separar mesas"><i class="fas fa-unlink"></i></span>` : '';
           controlesHtml = `
             <div class="controles-edicion-mesa">
               ${btnUnlinkHtml}
-              <span class="btn-edit-pax" title="Editar capacidad"><i class="fas fa-pencil-alt"></i></span>
+              <span class="btn-edit-pax" title="Editar mesa"><i class="fas fa-pencil-alt"></i></span>
               <span class="btn-delete-mesa" title="Eliminar mesa">&times;</span>
             </div>
           `;
@@ -516,7 +516,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
           divMesa.style.boxShadow = '0 0 20px rgba(241, 196, 15, 0.8)';
         }
 
-        const textoNumero = mesa.isMerged ? mesa.displayId : mesa.id;
+        const textoNumero = mesa.displayId || mesa.id;
         divMesa.innerHTML = `
           <span class="mesa-numero">${textoNumero}</span>
           <span class="mesa-capacidad">(${mesa.c}p)</span>
@@ -569,12 +569,10 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
             const nuevoId = prompt(`Nuevo número/etiqueta para la Mesa ${textoNumero}:`, textoNumero.toString());
             if (nuevoId && nuevoId.trim() !== '') {
               const valTrim = nuevoId.trim();
+              mesa.displayId = valTrim;
               const numInt = parseInt(valTrim, 10);
               if (!isNaN(numInt)) {
                 mesa.id = numInt;
-                mesa.displayId = valTrim;
-              } else {
-                mesa.displayId = valTrim;
               }
             }
             const nuevaCap = prompt(`Cambiar capacidad para la Mesa ${textoNumero} (Mínimo 1, Máximo 50):`, mesa.c.toString());
@@ -583,10 +581,10 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
               if (!isNaN(capNum) && capNum > 0) {
                 if (capNum > 50) capNum = 50; 
                 mesa.c = capNum;
-                this.guardarLayoutFechaActual();
-                this.dibujarMesas(this.zonaActiva);
               }
             }
+            this.guardarLayoutFechaActual();
+            this.dibujarMesas(this.zonaActiva);
           });
 
           divMesa.querySelector('.btn-unlink-mesa')?.addEventListener('click', (e) => {
@@ -608,7 +606,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
           });
         }
       } else {
-        const textoNumero = mesa.isMerged ? mesa.displayId : mesa.id;
+        const textoNumero = mesa.displayId || mesa.id;
         divMesa.innerHTML = `<span class="mesa-numero">${textoNumero}</span><span class="mesa-capacidad">(${mesa.c}p)</span>`;
       }
 
@@ -640,7 +638,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       y: Math.round((mesaA.y + mesaB.y) / 2),
       isMerged: true,
       isVertical: esVertical, 
-      displayId: `${mesaA.id}+${mesaB.id}`, 
+      displayId: `${mesaA.displayId || mesaA.id}+${mesaB.displayId || mesaB.id}`, 
       originalTables: [
         JSON.parse(JSON.stringify(mesaA)),
         JSON.parse(JSON.stringify(mesaB))
@@ -658,7 +656,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       }
     }
     this.guardarLayoutFechaActual();
-    alert(`Mesas fusionadas con éxito para Llorona Comedor como Mesa ${mesaFusionada.displayId} el día ${this.fechaSeleccionada}.`);
+    alert(`Mesas fusionadas con éxito para Llorona Comedor como Mesa ${mesaFusionada.displayId}.`);
     this.dibujarMesas(zona);
   }
 
@@ -680,22 +678,14 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   reservaPerteneceAMesa(res: any, mesa: any): boolean {
     if (!res || !res.idMesa) return false;
     const resIdStr = res.idMesa.toString().trim();
-    const mesaIdStr = mesa.id.toString().trim();
+    const mesaIdStr = mesa.id ? mesa.id.toString().trim() : '';
+    const displayIdStr = mesa.displayId ? mesa.displayId.toString().trim() : '';
 
-    if (resIdStr === mesaIdStr) return true;
+    if (resIdStr === mesaIdStr || (displayIdStr && resIdStr === displayIdStr)) return true;
 
-    if (mesa.isMerged) {
-      if (mesa.displayId && resIdStr === mesa.displayId.toString().trim()) return true;
-
-      if (mesa.displayId) {
-        const subIds = mesa.displayId.split('+').map((s: string) => s.trim());
-        if (subIds.includes(resIdStr)) return true;
-      }
-
-      if (mesa.originalTables && Array.isArray(mesa.originalTables)) {
-        const tieneSubId = mesa.originalTables.some((orig: any) => orig.id.toString().trim() === resIdStr);
-        if (tieneSubId) return true;
-      }
+    if (mesa.isMerged && displayIdStr.includes('+')) {
+      const subIds = displayIdStr.split('+').map((s: string) => s.trim());
+      if (subIds.includes(resIdStr)) return true;
     }
 
     return false;
@@ -721,7 +711,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       mesaEl.removeAttribute('data-info');
       mesaEl.style.background = ''; 
       
-      const numMostrado = mesaFisica.isMerged ? mesaFisica.displayId : mesaFisica.id;
+      const numMostrado = mesaFisica.displayId || mesaFisica.id;
       mesaEl.innerHTML = `<span class="mesa-numero">${numMostrado}</span><span class="mesa-capacidad">(${mesaFisica.c}p)</span>`;
     });
 
@@ -888,7 +878,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     if (this.modoEdicion && this.modoCombinar) {
       if (!this.mesaACombinar) {
         this.mesaACombinar = mesa;
-        alert(`Mesa ${mesa.isMerged ? mesa.displayId : mesa.id} seleccionada en Llorona Comedor. Ahora haz clic en la segunda mesa para fusionarlas.`);
+        alert(`Mesa ${mesa.displayId || mesa.id} seleccionada en Llorona Comedor. Ahora haz clic en la segunda mesa para fusionarlas.`);
         this.dibujarMesas(zona);
       } else {
         if (this.mesaACombinar.id === mesa.id) {
@@ -912,7 +902,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     }
 
     this.mesaSeleccionadaTemp = { id: mesa.id, zona: zona };
-    const idMesa = mesa.id;
+    const idMesa = mesa.displayId || mesa.id;
 
     if (this.modoMover) {
       if(confirm(`¿Mover reserva a Mesa ${idMesa}?`)) {
@@ -963,7 +953,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       contenedorBotones.appendChild(btn);
     };
 
-    const numMesa = mesa.isMerged ? mesa.displayId : mesa.id;
+    const numMesa = mesa.displayId || mesa.id;
     elTxt('pop-mesa-id', numMesa.toString());
 
     if (!arrReservas || arrReservas.length === 0) {
@@ -993,7 +983,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       });
       crearBotonPop('Bloquear', 'btn-liberar', 'fa-lock', () => {
         popover.classList.add('oculto');
-        this.crearRegistroRapido(mesa.id, this.zonaActiva, 'Mesa Bloqueada', 'bloqueada', '0');
+        this.crearRegistroRapido(numMesa, this.zonaActiva, 'Mesa Bloqueada', 'bloqueada', '0');
       });
     } else if (arrReservas.length === 1) {
       if (singleInfoBox) singleInfoBox.style.display = 'grid';
@@ -1188,7 +1178,6 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
           this.mostrarDetalleReserva(realItem);
         });
 
-        // ✅ CORREGIDO: Asignación explícita del ID a mover en múltiples reservas de Llorona
         cardItem.querySelector('.btn-mover')?.addEventListener('click', (e) => {
           e.stopPropagation();
           popover.classList.add('oculto');
@@ -1218,7 +1207,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
   configurarMenuContextual() {}
 
-  crearRegistroRapido(idMesa: number, zona: string, nombre: string, estado: string, pax: string = "2") {
+  crearRegistroRapido(idMesa: any, zona: string, nombre: string, estado: string, pax: string = "2") {
     const nuevo = {
       id: Date.now(),
       idRestaurante: 3,
@@ -1289,16 +1278,16 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       });
     });
 
+    document.getElementById('btn-cancelar-mover')?.addEventListener('click', () => {
+      this.cancelarModoMover();
+    });
+
     document.querySelectorAll('.modal-close-btn, #close-nueva-reserva, #lista-mesa-close-btn, #close-walkin, #btn-close-popover').forEach(btn => {
       btn.addEventListener('click', (e: any) => {
         const overlay = e.target.closest('.modal-overlay, .popover-overlay');
         if (overlay) overlay.classList.add('oculto');
         this.resetWalkinModal();
       });
-    });
-
-    document.getElementById('btn-cancelar-mover')?.addEventListener('click', () => {
-      this.cancelarModoMover();
     });
 
     document.getElementById('nueva-reserva-btn')?.addEventListener('click', () => {
@@ -1421,17 +1410,18 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     const mesas = this.restaurante[zona] || [];
 
     mesas.forEach((m: any) => {
-      const labelMesa = m.isMerged ? `Mesa ${m.displayId} (${m.c} pers)` : `Mesa ${m.id} (${m.c} pers)`;
-      selectMesa.innerHTML += `<option value="${m.id}">${labelMesa}</option>`;
+      const valorOpcion = m.displayId || m.id.toString();
+      const labelMesa = `Mesa ${valorOpcion} (${m.c} pers)`;
+      selectMesa.innerHTML += `<option value="${valorOpcion}">${labelMesa}</option>`;
     });
 
     if (mesaPreseleccionada !== undefined && mesaPreseleccionada !== null) {
       const idBuscado = mesaPreseleccionada.toString().trim();
       const encontrada = mesas.find((m: any) => 
-        m.id.toString().trim() === idBuscado || (m.isMerged && m.displayId && m.displayId.toString().trim() === idBuscado)
+        m.id.toString().trim() === idBuscado || (m.displayId && m.displayId.toString().trim() === idBuscado)
       );
       if (encontrada) {
-        selectMesa.value = encontrada.id.toString();
+        selectMesa.value = encontrada.displayId || encontrada.id.toString();
       }
     }
   }
@@ -1454,7 +1444,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
       const choques = this.todasLasReservas.filter(r => 
         r.fecha === fechaElegida && 
-        r.idMesa === idMesaElegida && 
+        r.idMesa.toString() === idMesaElegida.toString() && 
         r.estado !== 'finalizada' && r.estado !== 'cancelada' && r.estado !== 'liberada' && 
         Number(r.id) !== Number(this.idReservaAEditar) 
       );
@@ -1645,7 +1635,6 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     if (modalDetalle) modalDetalle.classList.remove('oculto');
   }
 
-  // 📊 MÉTODOS DE ANALÍTICA Y GRÁFICAS LLORONA COMEDOR
   async cargarChartJS(): Promise<void> {
     return new Promise((resolve) => {
       if ((window as any).Chart) {

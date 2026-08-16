@@ -51,6 +51,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
   resolverTipoFusion: ((esPermanente: boolean | null) => void) | null = null;
 
   readonly BASE_URL = environment.apiUrl;
+
   constructor(private authService: AuthService, private ngZone: NgZone) {
     this.disenoMaestro = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
     this.cargarLayoutPorFecha(this.fechaSeleccionada);
@@ -69,19 +70,15 @@ export class PietraPage implements AfterViewInit, OnDestroy {
   }
 
   cargarLayoutPorFecha(fecha: string) {
+    if (this.disenoMaestro && Object.keys(this.disenoMaestro).length > 0) {
+      this.restaurante = JSON.parse(JSON.stringify(this.disenoMaestro));
+      this.asegurarCoordenadasGrid();
+      return;
+    }
+
     const keyFecha = `pietra_layout_${fecha}`;
     const layoutGuardado = localStorage.getItem(keyFecha);
     let disenoBase = this.disenoMaestro || this.PLANO_DEFECTO;
-    
-    const disenoProgramado = localStorage.getItem('pietra_diseno_permanente');
-    if (disenoProgramado) {
-      try {
-        const programacion = JSON.parse(disenoProgramado);
-        if (programacion.desde <= fecha && programacion.layout) {
-          disenoBase = programacion.layout;
-        }
-      } catch (e) {}
-    }
 
     if (layoutGuardado) {
       try {
@@ -102,25 +99,15 @@ export class PietraPage implements AfterViewInit, OnDestroy {
 
   async guardarDisenoPermanente() {
     const layoutPermanente = JSON.parse(JSON.stringify(this.restaurante));
-    localStorage.setItem('pietra_diseno_permanente', JSON.stringify({ desde: this.fechaSeleccionada, layout: layoutPermanente }));
-    
+    this.disenoMaestro = JSON.parse(JSON.stringify(layoutPermanente));
+    this.guardarLayoutFechaActual();
+
     const response = await fetch(`${this.BASE_URL}/api/pietra/diseno`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(layoutPermanente)
     });
     if (!response.ok) throw new Error('No se pudo guardar el diseño permanente en el servidor');
-
-    this.disenoMaestro = JSON.parse(JSON.stringify(layoutPermanente));
-    this.guardarLayoutFechaActual();
-
-    const prefijo = 'pietra_layout_';
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(prefijo) && key.substring(prefijo.length) >= this.fechaSeleccionada) {
-        localStorage.setItem(key, JSON.stringify(layoutPermanente));
-      }
-    }
   }
 
   async guardarReservaEnServidor(reserva: any, tipoCorreo?: string) {
@@ -153,24 +140,20 @@ export class PietraPage implements AfterViewInit, OnDestroy {
   async cargarDisenoMesas() {
     try {
       const resp = await fetch(`${this.BASE_URL}/api/pietra/diseno`);
-      const data = await resp.json();
-      const tieneMesas = Object.values(data).some((arr: any) => arr && arr.length > 0);
-      if (tieneMesas) {
-        const layoutLimpio: any = {};
-        for (const z in data) {
-          layoutLimpio[z] = [];
-          data[z].forEach((m: any) => {
-            if (m.isMerged && m.originalTables) {
-              m.originalTables.forEach((orig: any) => layoutLimpio[z].push(orig));
-            } else {
-              layoutLimpio[z].push(m);
-            }
-          });
+      if (resp.ok) {
+        const data = await resp.json();
+        const tieneMesas = Object.values(data).some((arr: any) => arr && arr.length > 0);
+        if (tieneMesas) {
+          this.disenoMaestro = data;
+          this.restaurante = JSON.parse(JSON.stringify(data));
+          this.asegurarCoordenadasGrid();
+          this.guardarLayoutFechaActual();
+          this.dibujarMesas(this.zonaActiva);
+          return;
         }
-        this.disenoMaestro = layoutLimpio;
       }
     } catch (e) {
-      this.disenoMaestro = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
+      console.warn('⚠️ Usando distribución de mesas de Pietra Cucina de respaldo.');
     }
     this.cargarLayoutPorFecha(this.fechaSeleccionada);
     this.dibujarMesas(this.zonaActiva);
@@ -179,8 +162,8 @@ export class PietraPage implements AfterViewInit, OnDestroy {
   async guardarDisenoEnServidor() {
     try {
       await this.guardarDisenoPermanente();
-      console.log('📐 Nuevo diseño de mesas guardado PERMANENTEMENTE para todos los días en Pietra Cucina');
-      alert('✅ ¡Nueva distribución de mesas guardada para TODOS los días con éxito!');
+      console.log('📐 Nuevo diseño guardado en la nube para Pietra Cucina');
+      alert('✅ ¡Nueva distribución de mesas guardada y sincronizada con éxito!');
     } catch (e) {
       console.error('❌ Error al guardar diseño permanente Pietra Cucina:', e);
       this.disenoMaestro = JSON.parse(JSON.stringify(this.restaurante));
@@ -238,11 +221,25 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       this.socket = io(this.BASE_URL);
       this.socket.emit('join_restaurante', 1);
 
-      // ⚡ NgZone + Sincronización en tiempo real para Pietra Cucina
+      // ⚡ Sincronización de Reservas en tiempo real
       this.socket.on('actualizar_pietra', (r: any[]) => { 
         this.ngZone.run(() => {
           this.todasLasReservas = this.limpiarNombresZonasViejas(r); 
           this.actualizarVistaCompleta(); 
+        });
+      });
+
+      // ⚡ Sincronización de Diseño de Mesas en tiempo real
+      this.socket.on('actualizar_diseno_pietra', (diseno: any) => {
+        this.ngZone.run(() => {
+          if (diseno && typeof diseno === 'object' && Object.keys(diseno).length > 0) {
+            this.disenoMaestro = diseno;
+            this.restaurante = JSON.parse(JSON.stringify(diseno));
+            this.asegurarCoordenadasGrid();
+            this.guardarLayoutFechaActual();
+            this.dibujarMesas(this.zonaActiva);
+            this.actualizarVistaCompleta();
+          }
         });
       });
     } catch(e) {}
@@ -286,7 +283,9 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       });
     });
     document.getElementById('btn-logout')?.addEventListener('click', () => {
-      if(confirm("¿Cerrar sesión de ReserveStack?")) console.log("Saliendo...");
+      if(confirm("¿Cerrar sesión de ReserveStack?")) {
+        this.cerrarSesion();
+      }
     });
   }
 
@@ -377,14 +376,17 @@ export class PietraPage implements AfterViewInit, OnDestroy {
 
   configurarOpcionesEditor() {
     document.getElementById('btn-add-mesa')?.addEventListener('click', () => {
-      const numMesa = prompt('Escribe el número de la nueva mesa:');
+      const numMesa = prompt('Escribe el número de la nueva mesa para Pietra Cucina:');
       if (!numMesa) return;
       const numId = parseInt(numMesa, 10);
       if (isNaN(numId)) { alert('Número de mesa no válido.'); return; }
 
       let existe = false;
       for (const z in this.restaurante) {
-        if (this.restaurante[z].some((m: any) => m.id === numId)) { existe = true; break; }
+        if (this.restaurante[z].some((m: any) => m.id === numId || m.displayId === numMesa.trim())) { 
+          existe = true; 
+          break; 
+        }
       }
       if (existe) { alert('El número de mesa ya existe.'); return; }
 
@@ -392,7 +394,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       const capNum = capMesa ? parseInt(capMesa, 10) : 4;
       const finalCap = (!isNaN(capNum) && capNum > 0 && capNum <= 50) ? capNum : 4;
 
-      const nuevaMesaObj = { id: numId, c: finalCap, x: 45, y: 40 };
+      const nuevaMesaObj = { id: numId, displayId: numMesa.trim(), c: finalCap, x: 45, y: 40 };
 
       if (!this.restaurante[this.zonaActiva]) this.restaurante[this.zonaActiva] = [];
       this.restaurante[this.zonaActiva].push(nuevaMesaObj);
@@ -510,11 +512,11 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       if (this.modoEdicion) {
         let controlesHtml = '';
         if (isSelectedEditor) {
-          let btnUnlinkHtml = mesa.isMerged ? `<span class="btn-unlink-mesa" title="Separar y restaurar mesas originales"><i class="fas fa-unlink"></i></span>` : '';
+          let btnUnlinkHtml = mesa.isMerged ? `<span class="btn-unlink-mesa" title="Separar mesas"><i class="fas fa-unlink"></i></span>` : '';
           controlesHtml = `
             <div class="controles-edicion-mesa">
               ${btnUnlinkHtml}
-              <span class="btn-edit-pax" title="Editar capacidad"><i class="fas fa-pencil-alt"></i></span>
+              <span class="btn-edit-pax" title="Editar mesa"><i class="fas fa-pencil-alt"></i></span>
               <span class="btn-delete-mesa" title="Eliminar mesa">&times;</span>
             </div>
           `;
@@ -525,7 +527,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           divMesa.style.boxShadow = '0 0 20px rgba(142, 68, 173, 0.8)';
         }
 
-        const textoNumero = mesa.isMerged ? mesa.displayId : mesa.id;
+        const textoNumero = mesa.displayId || mesa.id;
         divMesa.innerHTML = `
           <span class="mesa-numero">${textoNumero}</span>
           <span class="mesa-capacidad">(${mesa.c}p)</span>
@@ -578,12 +580,10 @@ export class PietraPage implements AfterViewInit, OnDestroy {
             const nuevoId = prompt(`Nuevo número/etiqueta para la Mesa ${textoNumero}:`, textoNumero.toString());
             if (nuevoId && nuevoId.trim() !== '') {
               const valTrim = nuevoId.trim();
+              mesa.displayId = valTrim;
               const numInt = parseInt(valTrim, 10);
               if (!isNaN(numInt)) {
                 mesa.id = numInt;
-                mesa.displayId = valTrim;
-              } else {
-                mesa.displayId = valTrim;
               }
             }
             const nuevaCap = prompt(`Cambiar capacidad para la Mesa ${textoNumero} (Mínimo 1, Máximo 50):`, mesa.c.toString());
@@ -617,7 +617,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           });
         }
       } else {
-        const textoNumero = mesa.isMerged ? mesa.displayId : mesa.id;
+        const textoNumero = mesa.displayId || mesa.id;
         divMesa.innerHTML = `<span class="mesa-numero">${textoNumero}</span><span class="mesa-capacidad">(${mesa.c}p)</span>`;
       }
 
@@ -649,7 +649,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       y: Math.round((mesaA.y + mesaB.y) / 2),
       isMerged: true,
       isVertical: esVertical, 
-      displayId: `${mesaA.id}+${mesaB.id}`, 
+      displayId: `${mesaA.displayId || mesaA.id}+${mesaB.displayId || mesaB.id}`, 
       originalTables: [
         JSON.parse(JSON.stringify(mesaA)),
         JSON.parse(JSON.stringify(mesaB))
@@ -667,14 +667,14 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       }
     }
     this.guardarLayoutFechaActual();
-    alert(`Mesas fusionadas con éxito como Mesa ${mesaFusionada.displayId} exclusivamente para la fecha ${this.fechaSeleccionada}.`);
+    alert(`Mesas fusionadas con éxito para Pietra Cucina como Mesa ${mesaFusionada.displayId}.`);
     this.dibujarMesas(zona);
   }
 
   desvincularMesa(mesa: any) {
     if (!mesa.isMerged || !mesa.originalTables) return;
     
-    if (confirm(`¿Desvincular la Mesa ${mesa.displayId} y restaurar las dos mesas individuales originales?`)) {
+    if (confirm(`¿Desvincular la Mesa ${mesa.displayId} y restaurar las mesas originales en Pietra Cucina?`)) {
       const zona = this.zonaActiva;
       mesa.originalTables.forEach((orig: any) => { this.restaurante[zona].push(orig); });
       this.restaurante[zona] = this.restaurante[zona].filter((m: any) => m.id !== mesa.id);
@@ -689,22 +689,14 @@ export class PietraPage implements AfterViewInit, OnDestroy {
   reservaPerteneceAMesa(res: any, mesa: any): boolean {
     if (!res || !res.idMesa) return false;
     const resIdStr = res.idMesa.toString().trim();
-    const mesaIdStr = mesa.id.toString().trim();
+    const mesaIdStr = mesa.id ? mesa.id.toString().trim() : '';
+    const displayIdStr = mesa.displayId ? mesa.displayId.toString().trim() : '';
 
-    if (resIdStr === mesaIdStr) return true;
+    if (resIdStr === mesaIdStr || (displayIdStr && resIdStr === displayIdStr)) return true;
 
-    if (mesa.isMerged) {
-      if (mesa.displayId && resIdStr === mesa.displayId.toString().trim()) return true;
-
-      if (mesa.displayId) {
-        const subIds = mesa.displayId.split('+').map((s: string) => s.trim());
-        if (subIds.includes(resIdStr)) return true;
-      }
-
-      if (mesa.originalTables && Array.isArray(mesa.originalTables)) {
-        const tieneSubId = mesa.originalTables.some((orig: any) => orig.id.toString().trim() === resIdStr);
-        if (tieneSubId) return true;
-      }
+    if (mesa.isMerged && displayIdStr.includes('+')) {
+      const subIds = displayIdStr.split('+').map((s: string) => s.trim());
+      if (subIds.includes(resIdStr)) return true;
     }
 
     return false;
@@ -730,7 +722,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       mesaEl.removeAttribute('data-info');
       mesaEl.style.background = ''; 
       
-      const numMostrado = mesaFisica.isMerged ? mesaFisica.displayId : mesaFisica.id;
+      const numMostrado = mesaFisica.displayId || mesaFisica.id;
       mesaEl.innerHTML = `<span class="mesa-numero">${numMostrado}</span><span class="mesa-capacidad">(${mesaFisica.c}p)</span>`;
     });
 
@@ -871,7 +863,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     this.mesaSeleccionadaTemp = null;
 
     const avisoMover = document.getElementById('aviso-mover');
-    if (avisoMover) avisoMover.classList.add('oculto'); 
+    if (avisoMover) avisoMover.classList.add('oculto');
 
     const res = this.todasLasReservas.find(r => Number(r.id) === Number(this.reservaAMoverId));
     if (res) {
@@ -895,7 +887,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     if (this.modoEdicion && this.modoCombinar) {
       if (!this.mesaACombinar) {
         this.mesaACombinar = mesa;
-        alert(`Mesa ${mesa.isMerged ? mesa.displayId : mesa.id} seleccionada. Ahora haz clic en la segunda mesa para fusionarlas.`);
+        alert(`Mesa ${mesa.displayId || mesa.id} seleccionada. Ahora haz clic en la segunda mesa para fusionarlas.`);
         this.dibujarMesas(zona);
       } else {
         if (this.mesaACombinar.id === mesa.id) {
@@ -919,7 +911,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     }
 
     this.mesaSeleccionadaTemp = { id: mesa.id, zona: zona };
-    const idMesa = mesa.id;
+    const idMesa = mesa.displayId || mesa.id;
 
     if (this.modoMover) {
       if(confirm(`¿Mover reserva a Mesa ${idMesa}?`)) {
@@ -968,7 +960,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       contenedorBotones.appendChild(btn);
     };
 
-    const numMesa = mesa.isMerged ? mesa.displayId : mesa.id;
+    const numMesa = mesa.displayId || mesa.id;
     elTxt('pop-mesa-id', numMesa.toString());
 
     if (!arrReservas || arrReservas.length === 0) {
@@ -998,7 +990,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       });
       crearBotonPop('Bloquear', 'btn-liberar', 'fa-lock', () => {
         popover.classList.add('oculto');
-        this.crearRegistroRapido(mesa.id, this.zonaActiva, 'Mesa Bloqueada', 'bloqueada', '0');
+        this.crearRegistroRapido(numMesa, this.zonaActiva, 'Mesa Bloqueada', 'bloqueada', '0');
       });
     } else if (arrReservas.length === 1) {
       if (singleInfoBox) singleInfoBox.style.display = 'grid';
@@ -1193,7 +1185,6 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           this.mostrarDetalleReserva(realItem);
         });
 
-        // ✅ CORREGIDO: Asignación explícita del ID a mover en múltiples reservas de Pietra
         cardItem.querySelector('.btn-mover')?.addEventListener('click', (e) => {
           e.stopPropagation();
           popover.classList.add('oculto');
@@ -1223,7 +1214,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
 
   configurarMenuContextual() {}
 
-  crearRegistroRapido(idMesa: number, zona: string, nombre: string, estado: string, pax: string = "2") {
+  crearRegistroRapido(idMesa: any, zona: string, nombre: string, estado: string, pax: string = "2") {
     const nuevo = {
       id: Date.now(),
       idRestaurante: 1,
@@ -1292,7 +1283,6 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       });
     });
 
-    // ✅ CORREGIDO: Handler específico para el botón cancelar mover de Pietra
     document.getElementById('btn-cancelar-mover')?.addEventListener('click', () => {
       this.modoMover = false;
       this.reservaAMoverId = null;
@@ -1428,17 +1418,18 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     const mesas = this.restaurante[zona] || [];
 
     mesas.forEach((m: any) => {
-      const labelMesa = m.isMerged ? `Mesa ${m.displayId} (${m.c} pers)` : `Mesa ${m.id} (${m.c} pers)`;
-      selectMesa.innerHTML += `<option value="${m.id}">${labelMesa}</option>`;
+      const valorOpcion = m.displayId || m.id.toString();
+      const labelMesa = `Mesa ${valorOpcion} (${m.c} pers)`;
+      selectMesa.innerHTML += `<option value="${valorOpcion}">${labelMesa}</option>`;
     });
 
     if (mesaPreseleccionada !== undefined && mesaPreseleccionada !== null) {
       const idBuscado = mesaPreseleccionada.toString().trim();
       const encontrada = mesas.find((m: any) => 
-        m.id.toString().trim() === idBuscado || (m.isMerged && m.displayId && m.displayId.toString().trim() === idBuscado)
+        m.id.toString().trim() === idBuscado || (m.displayId && m.displayId.toString().trim() === idBuscado)
       );
       if (encontrada) {
-        selectMesa.value = encontrada.id.toString();
+        selectMesa.value = encontrada.displayId || encontrada.id.toString();
       }
     }
   }
@@ -1461,7 +1452,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
 
       const choques = this.todasLasReservas.filter(r => 
         r.fecha === fechaElegida && 
-        r.idMesa === idMesaElegida && 
+        r.idMesa.toString() === idMesaElegida.toString() && 
         r.estado !== 'finalizada' && r.estado !== 'cancelada' && r.estado !== 'liberada' && 
         Number(r.id) !== Number(this.idReservaAEditar) 
       );
