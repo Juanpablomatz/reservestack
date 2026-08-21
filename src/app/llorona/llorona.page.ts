@@ -1,6 +1,7 @@
 import { Component, AfterViewInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { Chart, registerables } from 'chart.js';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../services/auth.service';
@@ -52,11 +53,19 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
   readonly BASE_URL = environment.apiUrl;
 
-  constructor(private authService: AuthService, private ngZone: NgZone) {
-    // 💾 Registra automáticamente la ruta de Llorona Comedor
+  constructor(
+    private authService: AuthService, 
+    private ngZone: NgZone,
+    private router: Router
+  ) {
     this.authService.guardarUltimaRuta('/llorona');
     this.disenoMaestro = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
     this.cargarLayoutPorFecha(this.fechaSeleccionada);
+  }
+
+  // 🚀 Redirige al panel general
+  irAlPanel() {
+    this.router.navigate(['/panel']);
   }
 
   cerrarSesion() {
@@ -272,11 +281,10 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         }
       });
     });
-    
+
+    // 🚀 Redirige al panel general
     document.getElementById('btn-logout')?.addEventListener('click', () => {
-      if (confirm("¿Deseas cerrar sesión de ReserveStack?")) {
-        this.cerrarSesion();
-      }
+      this.irAlPanel();
     });
   }
 
