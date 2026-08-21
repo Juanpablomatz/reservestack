@@ -11,6 +11,7 @@ export class AuthService {
   private readonly BASE_URL = environment.apiUrl;
   private readonly TOKEN_KEY = 'reservestack_token';
   private readonly USER_KEY = 'reservestack_user';
+  private readonly LAST_ROUTE_KEY = 'reservestack_last_route';
 
   constructor(private http: HttpClient, private router: Router) {}
 
@@ -33,6 +34,7 @@ export class AuthService {
     localStorage.removeItem(this.USER_KEY);
     localStorage.removeItem('token');
     localStorage.removeItem('jwt');
+    localStorage.removeItem(this.LAST_ROUTE_KEY);
     this.router.navigate(['/login']);
   }
 

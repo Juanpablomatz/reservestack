@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const helmet = require('helmet');
 const cors = require('cors');
 const db = require('./database');
 const http = require('http'); 
@@ -14,30 +15,50 @@ const server = http.createServer(app);
 // Configuración de Proxy para Render
 app.set('trust proxy', 1);
 
+// 🛡️ 1. SEGURIDAD HTTP CON HELMET
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
+
 const SECRET_KEY = process.env.JWT_SECRET || 'reservestack_jwt_secret_key_2026_prod';
 const PORT = process.env.PORT || 3000;
 
-// Configuración de Brevo API y Correo Oficial Verificado
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
-const SENDER_EMAIL = process.env.EMAIL_USER || 'reservaciones54@gmail.com';
+// 🔒 2. SEGURIDAD CORS RESTRINGIDO A TUS DOMINIOS OFICIALES
+const ORIGENES_PERMITIDOS = [
+  'https://reservestack.vercel.app',
+  'http://localhost:8100',
+  'http://localhost:4200',
+  'http://localhost:3000'
+];
 
-// CORS Cloud & Local
 app.use(cors({
-  origin: '*',
+  origin: function (origin, callback) {
+    if (!origin || ORIGENES_PERMITIDOS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Acceso no permitido por política de seguridad CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
 app.use(express.json());
 
+// Socket.io con CORS protegido
 const io = new Server(server, {
   cors: {
-    origin: "*", 
+    origin: ORIGENES_PERMITIDOS, 
     methods: ["GET", "POST"]
   }
 });
 
-// Rate limiters con validación adaptada para Render
+// API Key de Brevo y Correo Remitente Oficial
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const SENDER_EMAIL = process.env.EMAIL_USER || 'reservaciones54@gmail.com';
+
+// ⏱️ 3. RATE LIMITING (PROTECCIÓN CONTRA ATAQUES DOS Y FUERZA BRUTA)
 const limitadorGeneral = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 2000,
@@ -68,7 +89,7 @@ const TEMAS_RESTAURANTES = {
 };
 
 // =================================================================
-// FUNCIÓN DE ENVÍO DE CORREO VÍA HTTPS API (BREVO - UNIVERSAL 443)
+// FUNCIÓN DE ENVÍO DE CORREO VÍA HTTPS API (BREVO - UNIVERSAL)
 // =================================================================
 async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveStack', idRestaurante = 1) {
   if (!reserva.email || reserva.email.trim() === '') return;
@@ -182,7 +203,7 @@ app.get('/api/reservas/cancelar-cliente', async (req, res) => {
     const { idReserva, idRestaurante } = verificado;
     const infoRest = TEMAS_RESTAURANTES[idRestaurante] || { nombre: 'ReserveStack', color: '#d4af37' };
 
-    await db.query(`UPDATE reservas SET estado = 'cancelada' WHERE id_reserva = ? AND id_restaurante = ?`, [idReserva, idRestaurante]);
+    await db.query(`UPDATE reservas SET estado = 'cancelada' WHERE (id_reserva = ? OR id_reserva = ?) AND id_restaurante = ?`, [idReserva.toString(), Number(idReserva), idRestaurante]);
 
     const reservasActualizadas = await obtenerReservasPorRestaurante(idRestaurante);
     if (idRestaurante === 1) io.emit('actualizar_pietra', reservasActualizadas);
@@ -194,22 +215,27 @@ app.get('/api/reservas/cancelar-cliente', async (req, res) => {
       <html lang="es">
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Reserva Cancelada - ${infoRest.nombre}</title>
         <style>
-          body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #ffffff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-          .card { background: #161f2c; border: 2px solid ${infoRest.color}; border-radius: 16px; padding: 40px; text-align: center; max-width: 440px; }
+          body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #ffffff; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+          .card { background: #161f2c; border: 2px solid ${infoRest.color}; border-radius: 16px; padding: 40px 30px; text-align: center; max-width: 440px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
           h1 { color: ${infoRest.color}; margin-top: 0; font-size: 26px; }
+          p { color: #9faec0; font-size: 16px; line-height: 1.5; }
+          .badge { display: inline-block; background: rgba(192, 57, 43, 0.2); color: #e74c3c; border: 1px solid #c0392b; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 13px; margin-top: 15px; }
         </style>
       </head>
       <body>
         <div class="card">
           <h1>${infoRest.nombre.toUpperCase()}</h1>
           <p>Tu reservación ha sido cancelada exitosamente.</p>
+          <div class="badge">ESTADO: CANCELADA</div>
         </div>
       </body>
       </html>
     `);
   } catch (error) {
+    console.error('Error al cancelar reserva vía token:', error.message);
     res.status(403).send('<h3>El enlace de cancelación ha expirado o es inválido.</h3>');
   }
 });
