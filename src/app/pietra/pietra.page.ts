@@ -53,6 +53,8 @@ export class PietraPage implements AfterViewInit, OnDestroy {
   readonly BASE_URL = environment.apiUrl;
 
   constructor(private authService: AuthService, private ngZone: NgZone) {
+    // 💾 Registra automáticamente la ruta de Pietra Cucina
+    this.authService.guardarUltimaRuta('/pietra');
     this.disenoMaestro = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
     this.cargarLayoutPorFecha(this.fechaSeleccionada);
   }

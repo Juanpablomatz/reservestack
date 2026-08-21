@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { Router } from '@angular/router';
+import { environment } from '../../environments/environment';
 import { AuthService } from '../services/auth.service';
 
 @Component({
@@ -13,7 +14,7 @@ import { AuthService } from '../services/auth.service';
   imports: [IonicModule, CommonModule, FormsModule]
 })
 export class LoginPage implements OnInit {
-  // Login principal (usuario almacena el correo electrónico)
+  // Login principal (usuario almacena el correo electrónico o username)
   usuario: string = '';
   password: string = '';
   cargando: boolean = false;
@@ -31,7 +32,8 @@ export class LoginPage implements OnInit {
   recuperarError: string = '';
   recuperandoCargando: boolean = false;
 
-  readonly BASE_URL = 'http://localhost:3000';
+  // 🌐 Conexión dinámica Cloud & Local
+  readonly BASE_URL = environment.apiUrl;
 
   constructor(
     private authService: AuthService, 
@@ -39,9 +41,10 @@ export class LoginPage implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Si el usuario ya tiene sesión activa al entrar a /login o dar F5, enviarlo a Rosa Mexicano
+    // Si el usuario ya tiene sesión activa con Token JWT, enviarlo a su última vista
     if (this.authService.isAuthenticated()) {
-      this.router.navigate(['/rosa']);
+      const rutaDestino = this.authService.obtenerUltimaRuta();
+      this.router.navigateByUrl(rutaDestino);
     }
   }
 
@@ -54,7 +57,7 @@ export class LoginPage implements OnInit {
       return;
     }
 
-    // 🛡️ Validación estricta de formato de correo electrónico
+    // 🛡️ Validación estricta de formato de correo o username admin/hostess
     const regexEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     if (!regexEmail.test(valUsuario) && valUsuario !== 'admin' && valUsuario !== 'hostess') {
       this.errorMessage = 'Ingresa un correo electrónico válido (ej. correo@ejemplo.com).';
@@ -68,8 +71,9 @@ export class LoginPage implements OnInit {
       next: (res: any) => {
         this.cargando = false;
         if (res && res.success) {
-          // 🔑 Autenticación exitosa -> Dirige al panel
-          this.router.navigate(['/panel']);
+          // 🚀 Redirección inteligente a la última pestaña donde se quedó
+          const rutaDestino = this.authService.obtenerUltimaRuta();
+          this.router.navigateByUrl(rutaDestino);
         } else {
           this.errorMessage = res?.message || 'Correo o contraseña incorrectos.';
         }

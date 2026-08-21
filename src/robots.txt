@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Allow: /reservar
+Allow: /reservar-pietra
+Allow: /reservar-llorona
+
+# Ocultar paneles privados y login del buscador de Google
+Disallow: /login
+Disallow: /panel
+Disallow: /rosa
+Disallow: /pietra
+Disallow: /llorona
+
+Sitemap: https://reservestack.vercel.app/sitemap.xml

@@ -33,6 +33,16 @@
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "assets"
+              },
+              {
+                "glob": "robots.txt",
+                "input": "src",
+                "output": ""
+              },
+              {
+                "glob": "sitemap.xml",
+                "input": "src",
+                "output": ""
               }
             ],
             "styles": ["src/global.scss", "src/theme/variables.scss"],
@@ -107,6 +117,16 @@
                 "glob": "**/*",
                 "input": "src/assets",
                 "output": "assets"
+              },
+              {
+                "glob": "robots.txt",
+                "input": "src",
+                "output": ""
+              },
+              {
+                "glob": "sitemap.xml",
+                "input": "src",
+                "output": ""
               }
             ],
             "styles": ["src/global.scss", "src/theme/variables.scss"],

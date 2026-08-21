@@ -19,7 +19,6 @@ export class AuthService {
     return this.http.post(`${this.BASE_URL}/api/auth/login`, { usuario, password }).pipe(
       tap((res: any) => {
         if (res && res.success) {
-          // ✅ Garantiza el almacenamiento del token (res.token o fallback)
           const tokenAGuardar = res.token || res.jwt || 'SESSION_ACTIVE_TOKEN';
           localStorage.setItem(this.TOKEN_KEY, tokenAGuardar);
           localStorage.setItem(this.USER_KEY, JSON.stringify(res.usuario || { usuario }));
@@ -29,7 +28,6 @@ export class AuthService {
   }
 
   logout() {
-    // 🧹 Limpieza completa de sesión
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
     localStorage.removeItem('token');
@@ -38,7 +36,6 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
-  // 🛡️ Comprueba si la sesión está activa al recargar (F5)
   isAuthenticated(): boolean {
     const token = localStorage.getItem(this.TOKEN_KEY);
     return !!token && token !== 'null' && token !== 'undefined';
@@ -49,12 +46,10 @@ export class AuthService {
     return user ? JSON.parse(user) : null;
   }
 
-  // 🔑 Devuelve el Token JWT almacenado
   getToken(): string | null {
     return localStorage.getItem(this.TOKEN_KEY);
   }
 
-  // 🛡️ Genera los Encabezados HTTP con el Bearer Token para peticiones protegidas
   getAuthHeaders(): { headers: HttpHeaders } {
     const token = this.getToken();
     return {
@@ -63,5 +58,17 @@ export class AuthService {
         'Authorization': `Bearer ${token}`
       })
     };
+  }
+
+ 
+  guardarUltimaRuta(ruta: string): void {
+    if (ruta && !ruta.includes('/login') && !ruta.includes('/reservar')) {
+      localStorage.setItem(this.LAST_ROUTE_KEY, ruta);
+    }
+  }
+
+
+  obtenerUltimaRuta(): string {
+    return localStorage.getItem(this.LAST_ROUTE_KEY) || '/panel';
   }
 }
