@@ -17,10 +17,10 @@
     --border: #f1c40f;        
     --accent: #f1c40f;        /* Amarillo Cálido / Dorado Llorona */
     
-    --res: #f1c40f;           /* Amarillo Oro (Intacto) */
-    --occ: #c0392b;           /* Rojo Vino (Intacto) */
-    --blo: #95a5a6;           /* Gris Metal (Intacto) */
-    --move: #8e44ad;          /* Morado (Intacto) */
+    --res: #f1c40f;           /* Amarillo Oro */
+    --occ: #c0392b;           /* Rojo Vino */
+    --blo: #95a5a6;           /* Gris Metal */
+    --move: #8e44ad;          /* Morado */
 
     display: block;
     margin: 0; 
@@ -61,7 +61,7 @@
 .sidebar-brand { text-align: center; margin-bottom: 20px; }
 .sidebar-logo { max-width: 140px; height: auto; border-bottom: 2px solid var(--accent); padding-bottom: 10px; display: block; margin: 0 auto; }
 
-/* Menú de botones horizontales */
+/* Menu de botones horizontales */
 .main-nav { display: flex; gap: 8px; margin-bottom: 20px; }
 .nav-link { flex: 1; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 10px; text-decoration: none; color: #bdc3c7; border-radius: 6px; background: rgba(255,255,255,0.05); transition: 0.3s; font-size: 12px; border: 1px solid transparent; }
 .nav-link:hover { color: #fff; background: rgba(255,255,255,0.1); border-color: var(--accent); }
@@ -91,7 +91,7 @@
 .header-left { display: flex; align-items: center; gap: 15px; }
 .page-title { margin: 0; font-size: 24px; color: var(--bg-sidebar); font-family: 'Times New Roman', serif; font-weight: bold; }
 
-/* --- CONTROLES DE FECHA Y EDICIÓN --- */
+/* --- CONTROLES DE FECHA Y EDICION --- */
 .date-controls { display: flex; align-items: center; gap: 5px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .input-fecha-header { border: none; outline: none; background: transparent; color: var(--text-main); font-family: var(--font); font-size: 13px; cursor: pointer; padding: 6px 10px; font-weight: 500; }
 .btn-icon-date { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px 10px; border-radius: 4px; transition: 0.2s; }
@@ -106,22 +106,50 @@
 .btn-editar { background: #f8f9fa; border: 1px solid #d1d8e0; color: var(--bg-sidebar); padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 .btn-editar:hover { border-color: var(--accent); color: var(--accent); background: #fefdf6; }
 
-/* --- TARJETAS DE MÉTRICAS --- */
-.data-cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 20px; }
-.data-card { background-color: var(--bg-card); padding: 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; border-left: 4px solid var(--border); box-shadow: 0 3px 10px rgba(0,0,0,0.05); transition: transform 0.2s; }
-.data-card:hover { transform: translateY(-3px); }
-.stat-info { display: flex; flex-direction: column; gap: 2px; }
-.data-value { font-size: 20px; font-weight: bold; display: block; color: var(--bg-sidebar); }
-.data-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; }
+/* --- TARJETAS DE METRICAS COMPACTAS (6 EN 1 FILA) --- */
+.data-cards-container { 
+    display: grid; 
+    grid-template-columns: repeat(6, 1fr); 
+    gap: 10px; 
+    margin-bottom: 16px; 
+    width: 100%;
+
+    @media (max-width: 1100px) {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    @media (max-width: 600px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.data-card { 
+    background-color: var(--bg-card); 
+    padding: 9px 12px; 
+    border-radius: 8px; 
+    display: flex; 
+    align-items: center; 
+    border-left: 4px solid var(--border); 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
+    transition: transform 0.2s, box-shadow 0.2s; 
+
+    &:hover { 
+        transform: translateY(-2px); 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+    }
+}
+
+.stat-info { display: flex; flex-direction: column; gap: 1px; }
+.data-value { font-size: 18px; font-weight: 800; display: block; color: var(--bg-sidebar); line-height: 1.1; }
+.data-label { font-size: 9.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; white-space: nowrap; }
 
 .data-card.occupancy { border-color: var(--occ); } 
 .data-card:nth-child(2) { border-color: var(--res); } 
 .data-card:nth-child(3) { border-color: #27ae60; } 
-.data-card.blocked { border-color: var(--blo); }
-.data-card.total-bookings { border-color: #e67e22; } 
 .data-card.pax-total { border-color: var(--accent); }
+.data-card.total-bookings { border-color: #3498db; } 
+.data-card:nth-child(6) { border-color: #8e44ad; }
 
-/* --- VISTA ANALÍTICA / REPORTES LLORONA COMEDOR --- */
+/* --- VISTA ANALITICA / REPORTES LLORONA COMEDOR --- */
 .analytics-grid {
     display: grid;
     grid-template-columns: 1.4fr 1fr;
@@ -208,7 +236,7 @@
 .text-success { color: #27ae60 !important; }
 .text-purple { color: #8e44ad !important; }
 
-/* --- ÁREA DE MESAS --- */
+/* --- AREA DE MESAS --- */
 .tables-area { 
     background-color: var(--bg-card); 
     border-radius: 12px; 
@@ -222,7 +250,7 @@
 }
 
 ::ng-deep {
-    /* --- POPOVER FLOTANTE ESTÁTICO DE ACCIONES RÁPIDAS --- */
+    /* --- POPOVER FLOTANTE ESTATICO DE ACCIONES RAPIDAS --- */
     .popover-overlay {
       position: fixed;
       top: 0; left: 0;

@@ -61,7 +61,7 @@
 .sidebar-brand { text-align: center; margin-bottom: 20px; }
 .sidebar-logo { max-width: 140px; height: auto; border-bottom: 2px solid var(--accent); padding-bottom: 10px; display: block; margin: 0 auto; }
 
-/* Menú de botones horizontales */
+/* Menu de botones horizontales */
 .main-nav { display: flex; gap: 8px; margin-bottom: 20px; }
 .nav-link { flex: 1; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 10px; text-decoration: none; color: #bdc3c7; border-radius: 6px; background: rgba(255,255,255,0.05); transition: 0.3s; font-size: 12px; border: 1px solid transparent; }
 .nav-link:hover { color: #fff; background: rgba(255,255,255,0.1); border-color: var(--accent); }
@@ -91,7 +91,7 @@
 .header-left { display: flex; align-items: center; gap: 15px; }
 .page-title { margin: 0; font-size: 24px; color: var(--bg-sidebar); font-family: 'Times New Roman', serif; font-weight: bold; }
 
-/* --- CONTROLES DE FECHA Y EDICIÓN --- */
+/* --- CONTROLES DE FECHA Y EDICION --- */
 .date-controls { display: flex; align-items: center; gap: 5px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 2px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 .input-fecha-header { border: none; outline: none; background: transparent; color: var(--text-main); font-family: var(--font); font-size: 13px; cursor: pointer; padding: 6px 10px; font-weight: 500; }
 .btn-icon-date { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 6px 10px; border-radius: 4px; transition: 0.2s; }
@@ -106,22 +106,50 @@
 .btn-editar { background: #f8f9fa; border: 1px solid #d1d8e0; color: #2c3e50; padding: 6px 15px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.3s; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 .btn-editar:hover { border-color: var(--text-main); background: #eef2f5; }
 
-/* --- TARJETAS DE MÉTRICAS --- */
-.data-cards-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 20px; }
-.data-card { background-color: var(--bg-card); padding: 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; border-left: 4px solid var(--border); box-shadow: 0 3px 10px rgba(0,0,0,0.05); transition: transform 0.2s; }
-.data-card:hover { transform: translateY(-3px); }
-.stat-info { display: flex; flex-direction: column; gap: 2px; }
-.data-value { font-size: 20px; font-weight: bold; display: block; color: var(--bg-sidebar); }
-.data-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; }
+/* --- TARJETAS DE METRICAS COMPACTAS (6 EN 1 FILA) --- */
+.data-cards-container { 
+    display: grid; 
+    grid-template-columns: repeat(6, 1fr); 
+    gap: 10px; 
+    margin-bottom: 16px; 
+    width: 100%;
+
+    @media (max-width: 1100px) {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    @media (max-width: 600px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.data-card { 
+    background-color: var(--bg-card); 
+    padding: 9px 12px; 
+    border-radius: 8px; 
+    display: flex; 
+    align-items: center; 
+    border-left: 4px solid var(--border); 
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04); 
+    transition: transform 0.2s, box-shadow 0.2s; 
+
+    &:hover { 
+        transform: translateY(-2px); 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+    }
+}
+
+.stat-info { display: flex; flex-direction: column; gap: 1px; }
+.data-value { font-size: 18px; font-weight: 800; display: block; color: var(--bg-sidebar); line-height: 1.1; }
+.data-label { font-size: 9.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; font-weight: 700; white-space: nowrap; }
 
 .data-card.occupancy { border-color: var(--occ); } 
 .data-card:nth-child(2) { border-color: var(--res); } 
 .data-card:nth-child(3) { border-color: #27ae60; } 
-.data-card.blocked { border-color: var(--blo); }
-.data-card.total-bookings { border-color: #768f9e; } 
 .data-card.pax-total { border-color: var(--accent); }
+.data-card.total-bookings { border-color: #3498db; } 
+.data-card:nth-child(6) { border-color: #8e44ad; }
 
-/* --- ÁREA DE MESAS (MODO ABSOLUTO RESPONSIVO) --- */
+/* --- AREA DE MESAS (MODO ABSOLUTO RESPONSIVO) --- */
 .tables-area { 
     background-color: var(--bg-card); 
     border-radius: 12px; 
@@ -329,7 +357,7 @@
       }
     }
 
-    /* --- POPOVER FLOTANTE ESTÁTICO DE ACCIONES RÁPIDAS --- */
+    /* --- POPOVER FLOTANTE ESTATICO DE ACCIONES RAPIDAS --- */
     .popover-overlay {
       position: fixed;
       top: 0; left: 0;
@@ -436,7 +464,7 @@
           i { color: var(--accent); }
         }
 
-        /* CONTENEDOR DE ACCIONES / LISTA SCROLLABLE CON DISEÑO LIMPIO DE BOTONES */
+        /* CONTENEDOR DE ACCIONES / LISTA SCROLLABLE CON DISENO LIMPIO DE BOTONES */
         .popover-actions-container {
           max-height: 300px;
           overflow-y: auto;
@@ -486,7 +514,7 @@
             &.btn-cancelar { background-color: #c0392b !important; }
           }
 
-          /* DISEÑO LIMPIO PARA TARJETAS EN MÚLTIPLES RESERVAS */
+          /* DISENO LIMPIO PARA TARJETAS EN MULTIPLES RESERVAS */
           .multi-res-item-card {
             background: #f8fafc;
             border: 1px solid #cbd5e1;
@@ -669,7 +697,7 @@
       .res-nombre, .res-pax, .mesa-numero, .mesa-capacidad { color: #ffffff !important; }
     }
 
-    /* FUSIÓN HORIZONTAL */
+    /* FUSION HORIZONTAL */
     .mesa.doble-ancho {
         width: 155px !important;
         height: 60px !important;
@@ -706,7 +734,7 @@
         }
     }
 
-    /* FUSIÓN VERTICAL */
+    /* FUSION VERTICAL */
     .mesa.doble-alto {
         width: 75px !important;
         height: 125px !important;
@@ -886,7 +914,8 @@
   height: 38px;
   input { border: none !important; background: transparent !important; flex: 1; font-size: 13px; outline: none; }
 }
-/* --- VISTA ANALÍTICA / REPORTES --- */
+
+/* --- VISTA ANALITICA / REPORTES --- */
 .analytics-grid {
     display: grid;
     grid-template-columns: 1.4fr 1fr;
@@ -923,7 +952,7 @@
     h3 { margin: 0; }
 }
 
-/* Contenedor de la gráfica Chart.js */
+/* Contenedor de la grafica Chart.js */
 .chart-container {
     position: relative;
     width: 100%;
@@ -933,7 +962,7 @@
     justify-content: center;
 }
 
-/* Grid de métricas clave */
+/* Grid de metricas clave */
 .metrics-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;

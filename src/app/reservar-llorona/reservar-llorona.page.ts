@@ -4,11 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { environment } from '../../environments/environment';
 import { 
   IonContent, 
-  IonInput, 
-  IonSelect, 
-  IonSelectOption, 
-  IonTextarea, 
-  IonButton,
   IonIcon 
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
@@ -21,7 +16,8 @@ import {
   callOutline, 
   mailOutline, 
   documentTextOutline,
-  gridOutline
+  gridOutline,
+  logoWhatsapp 
 } from 'ionicons/icons';
 
 @Component({
@@ -31,11 +27,6 @@ import {
   standalone: true,
   imports: [
     IonContent, 
-    IonInput, 
-    IonSelect, 
-    IonSelectOption, 
-    IonTextarea, 
-    IonButton,
     IonIcon, 
     CommonModule, 
     FormsModule
@@ -56,10 +47,14 @@ export class ReservarLloronaPage implements OnInit {
   todayDate: string = '';
   cargando: boolean = false;
 
-  // Zona única oficial de Llorona Comedor
+  // Datos de contacto oficial para grupos grandes
+  readonly TEL_RECEPCION: string = '4493937923';
+  readonly TEL_MOSTRADO: string = '449 393 79 23';
+
+  // Zona unica oficial de Llorona Comedor
   zonasDisponibles: string[] = ['Piso'];
 
-  // Distribución física de respaldo (Mesas 1 a 10)
+  // Distribucion fisica de respaldo (Mesas 1 a 10)
   restauranteLayout: any = {
     'Piso': [
       {id:1,c:4},{id:2,c:4},{id:3,c:4},{id:4,c:4},{id:5,c:4},
@@ -68,14 +63,16 @@ export class ReservarLloronaPage implements OnInit {
   };
 
   readonly BASE_URL = environment.apiUrl;
+
   constructor() {
     addIcons({
       calendarOutline,
       timeOutline,
       peopleOutline,
+      callOutline,
+      logoWhatsapp,
       restaurantOutline,
       personOutline,
-      callOutline,
       mailOutline,
       documentTextOutline,
       gridOutline
@@ -85,6 +82,18 @@ export class ReservarLloronaPage implements OnInit {
   async ngOnInit() {
     this.calcularFechaMinimaLocal();
     await this.cargarDisenoMesas();
+  }
+
+  // Generadores dinamicos de enlaces para contacto de grupos
+  get enlaceLlamada(): string {
+    return `tel:${this.TEL_RECEPCION}`;
+  }
+
+  get enlaceWhatsapp(): string {
+    const textoMensaje = encodeURIComponent(
+      `Hola, deseo solicitar una reservacion para un grupo de ${this.personas} personas en Llorona Comedor.`
+    );
+    return `https://wa.me/52${this.TEL_RECEPCION}?text=${textoMensaje}`;
   }
 
   calcularFechaMinimaLocal() {
@@ -120,11 +129,11 @@ export class ReservarLloronaPage implements OnInit {
         }
       }
     } catch (e) {
-      console.warn('⚠️ Usando distribución de mesas de Llorona Comedor local de respaldo.');
+      console.warn('Usando distribucion de mesas de Llorona Comedor local de respaldo.');
     }
   }
 
-  // ⏰ VALIDACIÓN INTELIGENTE DE HORARIOS Y DÍAS DE SERVICIO (LLORONA COMEDOR)
+  // Validacion de horarios y dias de servicio
   validarHorarioServicio(fechaStr: string, horaStr: string): { valido: boolean; mensaje: string } {
     if (!fechaStr || !horaStr) {
       return { valido: false, mensaje: 'Por favor selecciona fecha y hora.' };
@@ -132,31 +141,31 @@ export class ReservarLloronaPage implements OnInit {
 
     const [year, month, day] = fechaStr.split('-').map(Number);
     const fechaObj = new Date(year, month - 1, day);
-    const diaSemana = fechaObj.getDay(); // 0: Domingo, 1: Lunes, ..., 6: Sábado
+    const diaSemana = fechaObj.getDay(); // 0: Domingo, 1: Lunes, ..., 6: Sabado
 
-    // 1. Días cerrados en Llorona Comedor (Lunes y Martes)
+    // 1. Dias cerrados en Llorona Comedor (Lunes y Martes)
     if (diaSemana === 1 || diaSemana === 2) {
       const nomDia = diaSemana === 1 ? 'Lunes' : 'Martes';
-      return { valido: false, mensaje: `Llorona Comedor se encuentra CERRADO los días ${nomDia}.` };
+      return { valido: false, mensaje: `Llorona Comedor se encuentra CERRADO los dias ${nomDia}.` };
     }
 
-    // 2. Horarios oficiales por día en Llorona Comedor
+    // 2. Horarios oficiales por dia en Llorona Comedor
     let horaApertura = '15:00';
     let horaCierre = '21:00';
 
-    if (diaSemana >= 3 && diaSemana <= 5) { // Miércoles a Viernes (3:00 PM - 9:00 PM)
+    if (diaSemana >= 3 && diaSemana <= 5) { // Miercoles a Viernes (3:00 PM - 9:00 PM)
       horaApertura = '15:00'; 
       horaCierre = '21:00';
-    } else if (diaSemana === 6 || diaSemana === 0) { // Sábado y Domingo (2:00 PM - 10:00 PM)
+    } else if (diaSemana === 6 || diaSemana === 0) { // Sabado y Domingo (2:00 PM - 10:00 PM)
       horaApertura = '14:00'; 
       horaCierre = '22:00';
     }
 
     if (horaStr < horaApertura || horaStr > horaCierre) {
-      const nomDia = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][diaSemana];
+      const nomDia = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'][diaSemana];
       return { 
         valido: false, 
-        mensaje: `Nuestro horario de atención los ${nomDia}s en Llorona Comedor es de ${horaApertura} a ${horaCierre} hs. Por favor elige una hora dentro del servicio.` 
+        mensaje: `Nuestro horario de atencion los dias ${nomDia} en Llorona Comedor es de ${horaApertura} a ${horaCierre} hs. Por favor elige una hora dentro del servicio.` 
       };
     }
 
@@ -177,6 +186,7 @@ export class ReservarLloronaPage implements OnInit {
       const resp = await fetch(`${this.BASE_URL}/api/restaurantes/3/reservas`);
       const todasLasReservas = await resp.json();
 
+      // 1. Filtrar reservaciones activas para el dia seleccionado
       const ocupadasHoy = todasLasReservas.filter((r: any) => 
         r.fecha === this.fecha && 
         r.estado !== 'finalizada' && 
@@ -187,6 +197,7 @@ export class ReservarLloronaPage implements OnInit {
 
       const mesasDeZona = this.restauranteLayout[this.zona] || [];
 
+      // 2. Verificar ocupacion considerando mesas simples y fusionadas
       const mesaEstaOcupada = (m: any) => {
         const mIdStr = m.id.toString();
         if (idsMesasOcupadas.includes(mIdStr)) return true;
@@ -203,17 +214,41 @@ export class ReservarLloronaPage implements OnInit {
         return false;
       };
 
-      const mesaIdeal = mesasDeZona.find((m: any) => 
-        m.c >= personasRequeridas && !mesaEstaOcupada(m)
-      );
+      // 3. Obtener todas las mesas libres de la zona elegida
+      const mesasLibres = mesasDeZona.filter((m: any) => !mesaEstaOcupada(m));
 
-      if (mesaIdeal) return mesaIdeal.id;
+      if (mesasLibres.length > 0) {
+        // Filtrar mesas con capacidad suficiente para el grupo
+        const candidatas = mesasLibres.filter((m: any) => Number(m.c) >= personasRequeridas);
 
-      const cualquierMesaLibre = mesasDeZona.find((m: any) => !mesaEstaOcupada(m));
-      if (cualquierMesaLibre) return cualquierMesaLibre.id;
+        if (candidatas.length > 0) {
+          // Ordenar inteligentemente:
+          // a) Menor desperdicio de asientos primero (ajuste mas exacto)
+          // b) Mesas individuales antes que mesas fusionadas
+          candidatas.sort((a: any, b: any) => {
+            const desperdicioA = Number(a.c) - personasRequeridas;
+            const desperdicioB = Number(b.c) - personasRequeridas;
+
+            if (desperdicioA !== desperdicioB) {
+              return desperdicioA - desperdicioB;
+            }
+
+            if (a.isMerged && !b.isMerged) return 1;
+            if (!a.isMerged && b.isMerged) return -1;
+
+            return 0;
+          });
+
+          return candidatas[0].id;
+        }
+
+        // Si ninguna mesa alcanza la capacidad requerida, asignar la mesa libre con mayor capacidad
+        mesasLibres.sort((a: any, b: any) => Number(b.c) - Number(a.c));
+        return mesasLibres[0].id;
+      }
 
     } catch (error) {
-      console.error('Error en el algoritmo de asignación de mesa en Llorona:', error);
+      console.error('Error en el algoritmo de asignacion de mesa en Llorona:', error);
     }
 
     const mesasRespaldo = this.restauranteLayout[this.zona] || [];
@@ -221,6 +256,9 @@ export class ReservarLloronaPage implements OnInit {
   }
 
   async confirmarReservacion() {
+    // Guardia de seguridad: evita multiples envios simultaneos
+    if (this.cargando) return;
+
     const regexTexto = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
     const regexEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     const regexTel = /^[0-9]+$/;
@@ -231,78 +269,85 @@ export class ReservarLloronaPage implements OnInit {
       return;
     }
 
-    // 2. Validación estricta de Horarios Oficiales y Horas Pasadas
+    // 2. Validacion estricta de Horarios Oficiales y Horas Pasadas
     const checkHorario = this.validarHorarioServicio(this.fecha, this.hora);
     if (!checkHorario.valido) {
-      alert(`⚠️ ${checkHorario.mensaje}`);
+      alert(checkHorario.mensaje);
       return;
     }
 
-    // 3. Validación de formato de texto
+    // 3. Validacion de formato de texto
     if (!regexTexto.test(this.nombre) || !regexTexto.test(this.apellido)) {
       alert('Tu Nombre y Apellido solo deben contener letras.');
       return;
     }
 
-    // 4. Validación comensales
+    // 4. Validacion comensales
     const pax = Number(this.personas);
-    if (isNaN(pax) || pax < 1 || pax > 50) {
-      alert('El número de personas debe ser un valor numérico entre 1 y 50.');
+    if (isNaN(pax) || pax < 1) {
+      alert('El numero de personas debe ser como minimo 1.');
       return;
     }
 
-    // 5. Validación opcional de Teléfono
+    // Bloqueo estricto para grupos de 15 o mas
+    if (pax >= 15) {
+      alert(`Para reservaciones de 15 personas o mas, por favor comunicate directamente con recepcion al ${this.TEL_MOSTRADO} para coordinar el acomodo de mesas.`);
+      return;
+    }
+
+    // 5. Validacion opcional de Telefono
     if (this.telefono.trim() && (!regexTel.test(this.telefono) || this.telefono.length < 8 || this.telefono.length > 15)) {
-      alert('El número de teléfono debe contener únicamente dígitos numéricos (entre 8 y 15 números).');
+      alert('El numero de telefono debe contener unicamente digitos numericos (entre 8 y 15 numeros).');
       return;
     }
 
-    // 6. Validación opcional de Email
+    // 6. Validacion opcional de Email
     if (this.email.trim() && !regexEmail.test(this.email)) {
-      alert('Por favor, ingresa una dirección de correo electrónico válida (ejemplo@correo.com).');
+      alert('Por favor, ingresa una direccion de correo electronico valida (ejemplo@correo.com).');
       return;
     }
 
     this.cargando = true;
-    const idMesaAsignada = await this.buscarMesaDisponible(pax);
-    const nombreCompleto = `${this.nombre.trim()} ${this.apellido.trim()}`;
-
-    const nuevaReserva = {
-      id: Date.now(), 
-      idRestaurante: 3, // Llorona Comedor
-      fecha: this.fecha,
-      hora: this.hora,
-      zona: this.zona,
-      idMesa: idMesaAsignada.toString(),
-      nombre: nombreCompleto,
-      personas: pax.toString(),
-      telefono: this.telefono.trim() || null,
-      email: this.email.trim() || null,
-      nota: this.nota.trim() || null,
-      estado: 'reservada',
-      isNewRecord: true,
-      tipoCorreo: 'crear' // ✅ CORREGIDO: Se agregó para que el servidor envíe el correo de confirmación
-    };
 
     try {
+      const idMesaAsignada = await this.buscarMesaDisponible(pax);
+      const nombreCompleto = `${this.nombre.trim()} ${this.apellido.trim()}`;
+
+      const nuevaReserva = {
+        id: Date.now(), 
+        idRestaurante: 3, // Llorona Comedor
+        fecha: this.fecha,
+        hora: this.hora,
+        zona: this.zona,
+        idMesa: idMesaAsignada.toString(),
+        nombre: nombreCompleto,
+        personas: pax.toString(),
+        telefono: this.telefono.trim() || null,
+        email: this.email.trim() || null,
+        nota: this.nota.trim() || null,
+        estado: 'reservada',
+        isNewRecord: true,
+        tipoCorreo: 'crear'
+      };
+
       const response = await fetch(`${this.BASE_URL}/api/restaurantes/3/reservas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevaReserva)
       });
       const data = await response.json();
-      this.cargando = false;
 
       if (data.success || response.ok) {
-        alert(`🎉 ¡Reserva en Llorona Comedor confirmada con éxito!\nTe hemos asignado automáticamente la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmación enviada a: ${this.email || 'tu correo'}`);
+        alert(`¡Reserva en Llorona Comedor confirmada con exito!\nTe hemos asignado automaticamente la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmacion enviada a: ${this.email || 'tu correo'}`);
         this.limpiarFormulario();
       } else {
         alert('Error al procesar tu registro. Por favor vuelve a intentarlo.');
       }
     } catch (e) {
-      this.cargando = false;
       console.error('Error al enviar la reserva:', e);
-      alert('No se pudo conectar al servidor de reservas. Inténtalo de nuevo más tarde.');
+      alert('No se pudo conectar al servidor de reservas. Intentalo de nuevo mas tarde.');
+    } finally {
+      this.cargando = false;
     }
   }
 

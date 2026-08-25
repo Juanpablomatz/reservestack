@@ -19,7 +19,7 @@ declare var io: any;
 })
 export class LloronaPage implements AfterViewInit, OnDestroy {
 
-  // PLANO MAESTRO FÍSICO DE LLORONA COMEDOR (ZONA ÚNICA: Piso, MESAS 1 A 10)
+  // PLANO MAESTRO FISICO DE LLORONA COMEDOR (ZONA UNICA: Piso, MESAS 1 A 10)
   readonly PLANO_DEFECTO: any = {
     'Piso': [
       {id:1,c:4},{id:2,c:4},{id:3,c:4},{id:4,c:4},{id:5,c:4},
@@ -37,7 +37,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   modoMover: boolean = false;
   reservaAMoverId: any = null;
   idReservaAEditar: any = null; 
-  socket: any;
+  socket: any = null;
 
   mesaSeleccionadaTemp: { id: number, zona: string } | null = null;
   chartInstance: any = null;
@@ -51,6 +51,11 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   respaldoRestaurante: string = '';
   resolverTipoFusion: ((esPermanente: boolean | null) => void) | null = null;
 
+  // --- CONTROL DE RENDERIZADO Y REINTENTOS ---
+  private reintentosDibujo: number = 0;
+  private maxReintentos: number = 10;
+  private sistemaInicializado: boolean = false;
+
   readonly BASE_URL = environment.apiUrl;
 
   constructor(
@@ -61,9 +66,9 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     this.authService.guardarUltimaRuta('/llorona');
     this.disenoMaestro = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
     this.cargarLayoutPorFecha(this.fechaSeleccionada);
+    this.cargarReservasDesdeCache();
   }
 
-  // 🚀 Redirige al panel general
   irAlPanel() {
     this.router.navigate(['/panel']);
   }
@@ -80,8 +85,67 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     return `${year}-${month}-${day}`;
   }
 
+  tieneMesasValidas(obj: any): boolean {
+    if (!obj || typeof obj !== 'object') return false;
+    return Object.values(obj).some((arr: any) => Array.isArray(arr) && arr.length > 0);
+  }
+
+  // Carga inmediata del cache local de reservaciones para pintar en milisegundo 0
+  cargarReservasDesdeCache() {
+    const cache = localStorage.getItem('llorona_reservas_cache');
+    if (cache) {
+      try {
+        const parsed = JSON.parse(cache);
+        if (Array.isArray(parsed)) {
+          this.todasLasReservas = parsed;
+        }
+      } catch (e) {}
+    }
+  }
+
+  guardarReservasEnCache() {
+    if (Array.isArray(this.todasLasReservas)) {
+      localStorage.setItem('llorona_reservas_cache', JSON.stringify(this.todasLasReservas));
+    }
+  }
+
+  // Renderizado instantaneo al montar la vista
+  ngAfterViewInit() {
+    this.ejecutarMontajeVista();
+  }
+
+  // Ciclo de vida Ionic: Se ejecuta al recuperar foco
+  ionViewDidEnter() {
+    this.authService.guardarUltimaRuta('/llorona');
+    this.ejecutarMontajeVista();
+  }
+
+  ejecutarMontajeVista() {
+    this.reintentosDibujo = 0;
+
+    // 1. Sincronizar input de fecha inmediatamente si existe
+    const inputFecha = document.getElementById('filtro-fecha-global') as HTMLInputElement;
+    if (inputFecha) {
+      inputFecha.value = this.fechaSeleccionada;
+    }
+
+    // 2. Renderizado sincronico e instantaneo con datos disponibles
+    this.cargarLayoutPorFecha(this.fechaSeleccionada);
+    this.dibujarMesas(this.zonaActiva);
+    this.actualizarVistaCompleta();
+
+    // 3. Inicializacion de eventos y socket si es primera vez
+    if (!this.sistemaInicializado) {
+      this.inicializarSistema();
+    } else {
+      // 4. Actualizacion en segundo plano con el servidor
+      this.cargarDisenoMesas();
+      this.cargarReservaciones();
+    }
+  }
+
   cargarLayoutPorFecha(fecha: string) {
-    if (this.disenoMaestro && Object.keys(this.disenoMaestro).length > 0) {
+    if (this.tieneMesasValidas(this.disenoMaestro)) {
       this.restaurante = JSON.parse(JSON.stringify(this.disenoMaestro));
       this.asegurarCoordenadasGrid();
       return;
@@ -89,11 +153,16 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
     const keyFecha = `llorona_layout_${fecha}`;
     const layoutGuardado = localStorage.getItem(keyFecha);
-    let disenoBase = this.disenoMaestro || this.PLANO_DEFECTO;
+    let disenoBase = this.PLANO_DEFECTO;
 
     if (layoutGuardado) {
       try {
-        this.restaurante = JSON.parse(layoutGuardado);
+        const parsed = JSON.parse(layoutGuardado);
+        if (this.tieneMesasValidas(parsed)) {
+          this.restaurante = parsed;
+        } else {
+          this.restaurante = JSON.parse(JSON.stringify(disenoBase));
+        }
       } catch(e) {
         this.restaurante = JSON.parse(JSON.stringify(disenoBase));
       }
@@ -104,8 +173,10 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   }
 
   guardarLayoutFechaActual() {
-    const keyFecha = `llorona_layout_${this.fechaSeleccionada}`;
-    localStorage.setItem(keyFecha, JSON.stringify(this.restaurante));
+    if (this.tieneMesasValidas(this.restaurante)) {
+      const keyFecha = `llorona_layout_${this.fechaSeleccionada}`;
+      localStorage.setItem(keyFecha, JSON.stringify(this.restaurante));
+    }
   }
 
   async guardarDisenoPermanente() {
@@ -118,7 +189,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(layoutPermanente)
     });
-    if (!response.ok) throw new Error('No se pudo guardar el diseño permanente en el servidor');
+    if (!response.ok) throw new Error('No se pudo guardar el diseno permanente en el servidor');
   }
 
   async guardarReservaEnServidor(reserva: any, tipoCorreo?: string) {
@@ -141,10 +212,11 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
       delete reserva.isNewRecord;
       delete reserva.tipoCorreo;
+      this.guardarReservasEnCache();
       console.log('Llorona Comedor - Sincronizado:', data.message);
     } catch (e) {
-      alert(`No se guardó la operación en Llorona Comedor. ${e instanceof Error ? e.message : 'Revisa la conexión con el servidor.'}`);
-      console.error('❌ Error de conexión a MySQL Llorona Comedor:', e);
+      alert(`No se guardo la operacion en Llorona Comedor. ${e instanceof Error ? e.message : 'Revisa la conexion con el servidor.'}`);
+      console.error('Error de conexion a MySQL Llorona Comedor:', e);
     }
   }
 
@@ -153,39 +225,35 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       const resp = await fetch(`${this.BASE_URL}/api/restaurantes/3/diseno`);
       if (resp.ok) {
         const data = await resp.json();
-        const tieneMesas = Object.values(data).some((arr: any) => arr && arr.length > 0);
-        if (tieneMesas) {
+        if (this.tieneMesasValidas(data)) {
           this.disenoMaestro = data;
           this.restaurante = JSON.parse(JSON.stringify(data));
           this.asegurarCoordenadasGrid();
           this.guardarLayoutFechaActual();
           this.dibujarMesas(this.zonaActiva);
+          this.actualizarVistaCompleta();
           return;
         }
       }
     } catch (e) {
-      console.warn('⚠️ Usando distribución de mesas de Llorona Comedor local de respaldo.');
+      console.warn('Usando distribucion de mesas de Llorona Comedor local de respaldo.');
     }
     this.cargarLayoutPorFecha(this.fechaSeleccionada);
     this.dibujarMesas(this.zonaActiva);
+    this.actualizarVistaCompleta();
   }
 
   async guardarDisenoEnServidor() {
     try {
       await this.guardarDisenoPermanente();
-      console.log('📐 Nuevo diseño guardado en la nube para Llorona Comedor');
-      alert('✅ ¡Nueva distribución de mesas guardada y sincronizada con éxito!');
+      console.log('Nuevo diseno guardado en la nube para Llorona Comedor');
+      alert('Nueva distribucion de mesas guardada y sincronizada con exito.');
     } catch (e) {
-      console.error('❌ Error al guardar diseño permanente Llorona Comedor:', e);
+      console.error('Error al guardar diseno permanente Llorona Comedor:', e);
       this.disenoMaestro = JSON.parse(JSON.stringify(this.restaurante));
       this.guardarLayoutFechaActual();
+      alert('No se pudo sincronizar el diseno con el servidor. Se mantuvo la copia local.');
     }
-  }
-
-  ngAfterViewInit() {
-    setTimeout(() => {
-      this.inicializarSistema();
-    }, 150);
   }
 
   ngOnDestroy() {
@@ -228,34 +296,40 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       }
     });
 
-    try {
-      this.socket = io(this.BASE_URL);
-      this.socket.emit('join_restaurante', 3);
+    if (!this.socket && typeof io !== 'undefined') {
+      try {
+        this.socket = io(this.BASE_URL);
+        this.socket.emit('join_restaurante', 3);
 
-      // ⚡ Sincronización de Reservas en tiempo real
-      this.socket.on('actualizar_llorona', (r: any[]) => { 
-        this.ngZone.run(() => {
-          this.todasLasReservas = r; 
-          this.actualizarVistaCompleta(); 
+        this.socket.on('actualizar_llorona', (r: any[]) => { 
+          this.ngZone.run(() => {
+            this.todasLasReservas = r; 
+            this.guardarReservasEnCache();
+            this.actualizarVistaCompleta(); 
+          });
         });
-      });
 
-      // ⚡ Sincronización de Diseño de Mesas en tiempo real
-      this.socket.on('actualizar_diseno_llorona', (diseno: any) => {
-        this.ngZone.run(() => {
-          if (diseno && typeof diseno === 'object' && Object.keys(diseno).length > 0) {
-            this.disenoMaestro = diseno;
-            this.restaurante = JSON.parse(JSON.stringify(diseno));
-            this.asegurarCoordenadasGrid();
-            this.guardarLayoutFechaActual();
-            this.dibujarMesas(this.zonaActiva);
-            this.actualizarVistaCompleta();
-          }
+        this.socket.on('actualizar_diseno_llorona', (diseno: any) => {
+          this.ngZone.run(() => {
+            if (this.tieneMesasValidas(diseno)) {
+              this.disenoMaestro = diseno;
+              this.restaurante = JSON.parse(JSON.stringify(diseno));
+              this.asegurarCoordenadasGrid();
+              this.guardarLayoutFechaActual();
+              this.dibujarMesas(this.zonaActiva);
+              this.actualizarVistaCompleta();
+            }
+          });
         });
-      });
-    } catch(e) {}
+      } catch(e) {
+        console.warn('Socket error Llorona:', e);
+      }
+    }
 
-    await this.cargarDisenoMesas();
+    this.sistemaInicializado = true;
+
+    // Cargas asincronas en segundo plano
+    this.cargarDisenoMesas();
     this.cargarReservaciones();
   }
 
@@ -282,7 +356,6 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       });
     });
 
-    // 🚀 Redirige al panel general
     document.getElementById('btn-logout')?.addEventListener('click', () => {
       this.irAlPanel();
     });
@@ -434,15 +507,26 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     document.getElementById('btn-fusion-permanente')?.addEventListener('click', () => resolverFusion(true));
     document.getElementById('btn-cancelar-tipo-fusion')?.addEventListener('click', () => resolverFusion(null));
 
-    document.getElementById('btn-save-diseno')?.addEventListener('click', async () => {
-      await this.guardarDisenoEnServidor(); 
-      this.modoEdicion = false;
-      this.modoCombinar = false;
-      this.mesaACombinar = null;
-      this.mesaSeleccionadaEdicion = null;
-      document.getElementById('toolbar-editor')?.classList.add('oculto');
-      document.getElementById('aviso-combinar')?.classList.add('oculto');
-      this.actualizarVistaCompleta();
+    const btnSaveDiseno = document.getElementById('btn-save-diseno');
+    btnSaveDiseno?.addEventListener('click', async () => {
+      const btn = btnSaveDiseno as HTMLButtonElement;
+      const textoOriginal = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin" style="margin-right: 6px;"></i> Guardando...';
+
+      try {
+        await this.guardarDisenoEnServidor();
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = textoOriginal;
+        this.modoEdicion = false;
+        this.modoCombinar = false;
+        this.mesaACombinar = null;
+        this.mesaSeleccionadaEdicion = null;
+        document.getElementById('toolbar-editor')?.classList.add('oculto');
+        document.getElementById('aviso-combinar')?.classList.add('oculto');
+        this.actualizarVistaCompleta();
+      }
     });
 
     document.getElementById('btn-cancel-edicion')?.addEventListener('click', () => {
@@ -473,9 +557,14 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     try {
       const resp = await fetch(`${this.BASE_URL}/api/restaurantes/3/reservas`);
       const data = await resp.json();
-      this.todasLasReservas = data;
+      if (Array.isArray(data)) {
+        this.todasLasReservas = data;
+        this.guardarReservasEnCache();
+      }
       this.actualizarVistaCompleta();
-    } catch(e) { this.actualizarVistaCompleta(); }
+    } catch(e) { 
+      this.actualizarVistaCompleta(); 
+    }
   }
 
   actualizarVistaCompleta() {
@@ -488,7 +577,16 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
   dibujarMesas(zona: string) {
     const plano = document.getElementById('plano-restaurante');
-    if(!plano) return;
+    
+    if (!plano) {
+      if (this.reintentosDibujo < this.maxReintentos) {
+        this.reintentosDibujo++;
+        setTimeout(() => this.dibujarMesas(zona), 80);
+      }
+      return;
+    }
+
+    this.reintentosDibujo = 0;
     plano.innerHTML = '';
     const mesas = this.restaurante[zona] || [];
 
@@ -580,9 +678,12 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
             if (nuevoId && nuevoId.trim() !== '') {
               const valTrim = nuevoId.trim();
               mesa.displayId = valTrim;
-              const numInt = parseInt(valTrim, 10);
-              if (!isNaN(numInt)) {
-                mesa.id = numInt;
+              
+              if (!mesa.isMerged) {
+                const numInt = parseInt(valTrim, 10);
+                if (!isNaN(numInt)) {
+                  mesa.id = numInt;
+                }
               }
             }
             const nuevaCap = prompt(`Cambiar capacidad para la Mesa ${textoNumero} (Mínimo 1, Máximo 50):`, mesa.c.toString());
@@ -605,9 +706,9 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
           divMesa.querySelector('.btn-delete-mesa')?.addEventListener('click', (e) => {
             e.stopPropagation();
             if (confirm(`¿Eliminar la Mesa ${textoNumero}?`)) {
-              this.restaurante[zona] = this.restaurante[zona].filter((m: any) => m.id !== mesa.id);
+              this.restaurante[zona] = this.restaurante[zona].filter((m: any) => m !== mesa && m.id !== mesa.id);
               if (this.disenoMaestro && this.disenoMaestro[zona]) {
-                this.disenoMaestro[zona] = this.disenoMaestro[zona].filter((m: any) => m.id !== mesa.id);
+                this.disenoMaestro[zona] = this.disenoMaestro[zona].filter((m: any) => m !== mesa && m.id !== mesa.id);
               }
               this.mesaSeleccionadaEdicion = null;
               this.guardarLayoutFechaActual();
@@ -662,23 +763,50 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         await this.guardarDisenoPermanente();
       } catch (error) {
         this.disenoMaestro = JSON.parse(JSON.stringify(this.restaurante));
-        console.warn('La fusión permanente no se pudo sincronizar con el servidor.', error);
+        console.warn('La fusion permanente no se pudo sincronizar con el servidor.', error);
       }
     }
     this.guardarLayoutFechaActual();
-    alert(`Mesas fusionadas con éxito para Llorona Comedor como Mesa ${mesaFusionada.displayId}.`);
+    alert(`Mesas fusionadas con exito para Llorona Comedor como Mesa ${mesaFusionada.displayId}.`);
     this.dibujarMesas(zona);
   }
 
   desvincularMesa(mesa: any) {
-    if (!mesa.isMerged || !mesa.originalTables) return;
+    if (!mesa.isMerged || !mesa.originalTables || !Array.isArray(mesa.originalTables)) return;
     
-    if (confirm(`¿Desvincular la Mesa ${mesa.displayId} y restaurar las mesas individuales originales en Llorona Comedor?`)) {
+    const textoNombre = mesa.displayId || mesa.id;
+    if (confirm(`¿Desvincular la Mesa ${textoNombre} y restaurar las mesas individuales originales en Llorona Comedor?`)) {
       const zona = this.zonaActiva;
-      mesa.originalTables.forEach((orig: any) => { this.restaurante[zona].push(orig); });
-      this.restaurante[zona] = this.restaurante[zona].filter((m: any) => m.id !== mesa.id);
+
+      const indiceRestaurante = this.restaurante[zona].findIndex((m: any) => m === mesa || m.id === mesa.id);
+      if (indiceRestaurante !== -1) {
+        this.restaurante[zona].splice(indiceRestaurante, 1);
+      }
+
+      if (this.disenoMaestro && this.disenoMaestro[zona]) {
+        const indiceMaestro = this.disenoMaestro[zona].findIndex((m: any) => m === mesa || m.id === mesa.id);
+        if (indiceMaestro !== -1) {
+          this.disenoMaestro[zona].splice(indiceMaestro, 1);
+        }
+      }
+
+      mesa.originalTables.forEach((orig: any) => {
+        const copiaOriginal = JSON.parse(JSON.stringify(orig));
+        
+        const existeEnRestaurante = this.restaurante[zona].some((m: any) => m.id === copiaOriginal.id);
+        if (!existeEnRestaurante) {
+          this.restaurante[zona].push(copiaOriginal);
+        }
+
+        if (this.disenoMaestro && this.disenoMaestro[zona]) {
+          const existeEnMaestro = this.disenoMaestro[zona].some((m: any) => m.id === copiaOriginal.id);
+          if (!existeEnMaestro) {
+            this.disenoMaestro[zona].push(JSON.parse(JSON.stringify(copiaOriginal)));
+          }
+        }
+      });
+
       this.mesaSeleccionadaEdicion = null;
-      
       this.guardarLayoutFechaActual();
       alert('Mesas separadas de manera exitosa.');
       this.dibujarMesas(zona);
@@ -687,15 +815,26 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
   reservaPerteneceAMesa(res: any, mesa: any): boolean {
     if (!res || !res.idMesa) return false;
-    const resIdStr = res.idMesa.toString().trim();
-    const mesaIdStr = mesa.id ? mesa.id.toString().trim() : '';
-    const displayIdStr = mesa.displayId ? mesa.displayId.toString().trim() : '';
+    const resIdStr = res.idMesa.toString().trim().toLowerCase();
+    const mesaIdStr = mesa.id ? mesa.id.toString().trim().toLowerCase() : '';
+    const displayIdStr = mesa.displayId ? mesa.displayId.toString().trim().toLowerCase() : '';
 
     if (resIdStr === mesaIdStr || (displayIdStr && resIdStr === displayIdStr)) return true;
 
-    if (mesa.isMerged && displayIdStr.includes('+')) {
-      const subIds = displayIdStr.split('+').map((s: string) => s.trim());
-      if (subIds.includes(resIdStr)) return true;
+    if (mesa.isMerged) {
+      if (displayIdStr.includes('+')) {
+        const subIds = displayIdStr.split('+').map((s: string) => s.trim().toLowerCase());
+        if (subIds.includes(resIdStr)) return true;
+      }
+      
+      if (mesa.originalTables && Array.isArray(mesa.originalTables)) {
+        const coincideConOriginal = mesa.originalTables.some((orig: any) => {
+          const origId = orig.id ? orig.id.toString().trim().toLowerCase() : '';
+          const origDisplay = orig.displayId ? orig.displayId.toString().trim().toLowerCase() : '';
+          return resIdStr === origId || (origDisplay && resIdStr === origDisplay);
+        });
+        if (coincideConOriginal) return true;
+      }
     }
 
     return false;
@@ -774,7 +913,10 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
   dibujarListaDeReservas(reservas: any[]) {
     const lista = document.getElementById('lista-reservas-sidebar');
-    if(!lista) return;
+    if(!lista) {
+      setTimeout(() => this.dibujarListaDeReservas(reservas), 100);
+      return;
+    }
     lista.innerHTML = '';
     const activas = reservas.filter(x => x.estado !== 'finalizada' && x.estado !== 'cancelada' && x.estado !== 'liberada');
     const finalizadas = reservas.filter(x => x.estado === 'finalizada' || x.estado === 'cancelada' || x.estado === 'liberada');
@@ -826,29 +968,31 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   actualizarEstadisticas(reservasDelDia: any[]) {
     const ocupadas = reservasDelDia.filter(r => r.estado === 'ocupada').length;
     const reservadas = reservasDelDia.filter(r => r.estado === 'reservada' || r.estado === 'confirmada').length;
-    const bloqueadas = reservasDelDia.filter(r => r.estado === 'bloqueada').length;
     
-    let paxAcumulado = 0;
+    let totalComensalesDia = 0;
     reservasDelDia.forEach(r => {
-      if (r.estado === 'ocupada') {
-        paxAcumulado += Number(r.personas || 0); 
+      if (r.estado !== 'cancelada' && r.estado !== 'bloqueada') {
+        totalComensalesDia += Number(r.personas || 0);
       }
     });
 
     let totalMesasFisicas = 0;
     Object.values(this.restaurante).forEach((zona: any) => totalMesasFisicas += zona.length);
-    const libres = totalMesasFisicas - (ocupadas + reservadas + bloqueadas);
+    const libres = Math.max(0, totalMesasFisicas - (ocupadas + reservadas));
     const porcentaje = totalMesasFisicas > 0 ? Math.round((ocupadas / totalMesasFisicas) * 100) : 0;
-    const totalesDia = reservasDelDia.filter(r => r.estado !== 'bloqueada').length;
+    const totalesDia = reservasDelDia.filter(r => r.estado !== 'cancelada' && r.estado !== 'bloqueada').length;
 
-    const act = (id: string, val: string | number) => { const el = document.getElementById(id); if(el) el.textContent = val.toString(); };
+    const act = (id: string, val: string | number) => { 
+      const el = document.getElementById(id); 
+      if(el) el.textContent = val.toString(); 
+    };
+
     act('stats-ocupadas', ocupadas); 
     act('stats-reservadas', reservadas); 
     act('stats-libres', libres); 
-    act('stats-bloqueadas', bloqueadas); 
-    act('stats-pax-total', paxAcumulado); 
-    act('stats-porcentaje-ocupacion', `${porcentaje}%`);
+    act('stats-pax-total', totalComensalesDia); 
     act('stats-totales-dia', totalesDia); 
+    act('stats-porcentaje-ocupacion', `${porcentaje}%`);
   }
 
   cancelarModoMover() {
@@ -1085,7 +1229,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
           this.dibujarMesas(this.zonaActiva);
         });
       } else if (realRes.estado === 'bloqueada') {
-        crearBotonPop('Desbloquear', 'btn-llegada', 'fa-unlock', () => {
+        crearBotonPop('Desbloquear', 'btn-liberar', 'fa-unlock', () => {
           popover.classList.add('oculto');
           realRes.estado = 'finalizada';
           this.guardarReservaEnServidor(realRes);
@@ -1231,6 +1375,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       isNewRecord: true 
     };
     this.todasLasReservas.push(nuevo);
+    this.guardarReservasEnCache();
     this.guardarReservaEnServidor(nuevo); 
     this.actualizarVistaCompleta();
   }
@@ -1239,6 +1384,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     const res = this.todasLasReservas.find(r => Number(r.id) === Number(idReserva));
     if (res) {
       res.estado = nuevoEstado;
+      this.guardarReservasEnCache();
       this.guardarReservaEnServidor(res); 
       this.actualizarVistaCompleta();
     }
@@ -1329,8 +1475,9 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
             const resObj = this.todasLasReservas.find(r => Number(r.id) === Number(this.idReservaAEditar));
             if (resObj) {
               resObj.personas = paxFinal.toString();
+              this.guardarReservasEnCache();
               this.guardarReservaEnServidor(resObj); 
-              alert('✅ ¡Cantidad de comensales actualizada!');
+              alert('Cantidad de comensales actualizada.');
             }
             this.actualizarVistaCompleta();
         } else if (this.mesaSeleccionadaTemp) {
@@ -1403,7 +1550,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       const selectZona = document.getElementById('res-zona') as HTMLSelectElement;
       if (selectZona && reserva.zona) {
         selectZona.value = reserva.zona;
-        this.actualizarSelectMesas(reserva.zona, reserva.idMesa);
+        this.actualizarSelectMesas(selectZona.value, reserva.idMesa);
       }
       
       const inputNotas = (document.getElementById('res-notas') as HTMLTextAreaElement) || (document.getElementById('res-notes') as HTMLTextAreaElement);
@@ -1461,7 +1608,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       
       const hayBloqueo = choques.some(r => r.estado === 'bloqueada');
       if (hayBloqueo) {
-          alert('⚠️ ACCIÓN DENEGADA: La mesa seleccionada se encuentra BLOQUEADA.');
+          alert('ACCION DENEGADA: La mesa seleccionada se encuentra BLOQUEADA.');
           return;
       }
 
@@ -1481,7 +1628,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       }
 
       if (alertaChoque) {
-          const confirmar = confirm('⚠️ ATENCIÓN: Ya hay una reserva en esa mesa con menos de 1 hora de diferencia. ¿Deseas forzar este Double-Booking?');
+          const confirmar = confirm('ATENCION: Ya hay una reserva en esa mesa con menos de 1 hora de diferencia. ¿Deseas forzar este Double-Booking?');
           if (!confirmar) return; 
       }
 
@@ -1502,6 +1649,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
           resObj.telefono = (document.getElementById('res-telefono') as HTMLInputElement).value;
           resObj.email = (document.getElementById('res-email') as HTMLInputElement).value;
           resObj.nota = notaValor;
+          this.guardarReservasEnCache();
           this.guardarReservaEnServidor(resObj); 
         }
         this.idReservaAEditar = null;
@@ -1522,6 +1670,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
           isNewRecord: true 
         };
         this.todasLasReservas.push(nuevaReserva);
+        this.guardarReservasEnCache();
         this.guardarReservaEnServidor(nuevaReserva, 'crear'); 
       }
 
@@ -1535,9 +1684,9 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
       setTimeout(() => {
         if (esEdicion) {
-          alert('✅ ¡Datos de la reserva actualizados con éxito en Llorona Comedor!');
+          alert('Datos de la reserva actualizados con exito en Llorona Comedor.');
         } else {
-          alert('✅ ¡Nueva reserva guardada con éxito en Llorona Comedor!');
+          alert('Nueva reserva guardada con exito en Llorona Comedor.');
         }
       }, 50);
     });
@@ -1587,6 +1736,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       if (reserva.estado === 'reservada' || reserva.estado === 'confirmada') {
         crearBoton('Marcar Llegada', 'btn-llegada', 'fa-bell-concierge', () => {
           reserva.estado = 'ocupada';
+          this.guardarReservasEnCache();
           this.guardarReservaEnServidor(reserva);
           this.actualizarVistaCompleta();
         });
@@ -1601,6 +1751,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         crearBoton('Cancelar por No-Show (15 min)', 'btn-cancelar', 'fa-trash-alt', () => {
           if (confirm('¿Cancelar por tolerancia de 15 minutos vencida y notificar por correo?')) {
             reserva.estado = 'cancelada';
+            this.guardarReservasEnCache();
             this.guardarReservaEnServidor(reserva, 'noshow');
             this.actualizarVistaCompleta();
           }
@@ -1608,6 +1759,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       } else if (reserva.estado === 'ocupada') {
         crearBoton('Liberar Mesa', 'btn-liberar', 'fa-broom', () => {
           reserva.estado = 'liberada';
+          this.guardarReservasEnCache();
           this.guardarReservaEnServidor(reserva);
           this.actualizarVistaCompleta();
         });
@@ -1621,6 +1773,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         if (!esWalkIn) {
             crearBoton('Deshacer Llegada', 'btn-editar-datos', 'fa-undo', () => {
               reserva.estado = 'reservada';
+              this.guardarReservasEnCache();
               this.guardarReservaEnServidor(reserva);
               this.actualizarVistaCompleta();
             });
@@ -1629,12 +1782,14 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       } else if (reserva.estado === 'bloqueada') {
         crearBoton('Desbloquear', 'btn-liberar', 'fa-unlock', () => {
           reserva.estado = 'finalizada';
+          this.guardarReservasEnCache();
           this.guardarReservaEnServidor(reserva);
           this.actualizarVistaCompleta();
         });
       } else if (reserva.estado === 'finalizada' || reserva.estado === 'cancelada' || reserva.estado === 'liberada') {
         crearBoton('Restaurar Registro', 'btn-llegada', 'fa-trash-restore', () => {
           reserva.estado = esWalkIn ? 'ocupada' : 'reservada';
+          this.guardarReservasEnCache();
           this.guardarReservaEnServidor(reserva);
           this.actualizarVistaCompleta();
         });

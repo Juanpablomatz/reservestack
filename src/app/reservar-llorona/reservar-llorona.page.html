@@ -30,11 +30,27 @@
           <label>NÚMERO DE PERSONAS</label>
           <div class="input-wrapper">
             <ion-icon name="people-outline"></ion-icon>
-            <input type="number" [(ngModel)]="personas" name="personas" min="1" max="50" required placeholder="Ej. 4 personas" />
+            <input type="number" [(ngModel)]="personas" name="personas" min="1" required placeholder="Ej. 4 personas" />
           </div>
         </div>
 
-        <div class="form-group">
+        <!-- Aviso dinamico para grupos de 15 o mas personas -->
+        <div *ngIf="personas >= 15" class="aviso-grupo-box" style="margin-top: 12px; padding: 14px; background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; border-radius: 6px;">
+          <h4 style="margin: 0 0 6px 0; font-size: 14px; font-weight: bold; color: #f1c40f;">Reservación para grupos grandes</h4>
+          <p style="margin: 0 0 12px 0; font-size: 12.5px; color: #ffffff; line-height: 1.4;">
+            Para reservaciones de 15 personas o más, te invitamos a comunicarte directamente con recepción para coordinar el acomodo de mesas a tu gusto y brindarte una atención personalizada.
+          </p>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a [href]="enlaceLlamada" style="flex: 1; min-width: 130px; text-decoration: none; background: #2c3e50; color: #ffffff; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <ion-icon name="call-outline"></ion-icon> Llamar {{ TEL_MOSTRADO }}
+            </a>
+            <a [href]="enlaceWhatsapp" target="_blank" style="flex: 1; min-width: 130px; text-decoration: none; background: #25d366; color: #ffffff; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <ion-icon name="logo-whatsapp"></ion-icon> WhatsApp Recepción
+            </a>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 12px;">
           <label>ZONA DE PREFERENCIA</label>
           <div class="input-wrapper select-wrapper">
             <ion-icon name="restaurant-outline"></ion-icon>
@@ -85,10 +101,17 @@
           </div>
         </div>
 
-        <button type="submit" [disabled]="cargando" class="btn-submit">
+        <!-- Boton de envio si son menos de 15, o aviso directo si son 15+ -->
+        <button *ngIf="personas < 15" type="submit" [disabled]="cargando" class="btn-submit">
           <span *ngIf="!cargando">CONFIRMAR RESERVACIÓN</span>
           <span *ngIf="cargando"><i class="fas fa-spinner fa-spin"></i> PROCESANDO...</span>
         </button>
+
+        <div *ngIf="personas >= 15" style="text-align: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-top: 15px;">
+          <p style="margin: 0; font-size: 13px; color: #ffffff;">
+            Para confirmar este grupo, utiliza los botones de <strong>Llamada</strong> o <strong>WhatsApp</strong> de arriba.
+          </p>
+        </div>
       </form>
     </div>
   </div>

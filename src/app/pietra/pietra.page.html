@@ -25,7 +25,7 @@
         </div>
 
         <div class="sidebar-footer">
-            <!-- Botón actualizado para regresar al panel principal -->
+            <!-- Boton actualizado para regresar al panel principal -->
             <button id="btn-logout" class="btn-logout" (click)="irAlPanel()">
                 <i class="fas fa-th-large"></i> Volver al Panel
             </button>
@@ -40,7 +40,7 @@
             <button id="btn-cancelar-mover" class="btn-cancelar-mover">Cancelar</button>
         </div>
 
-        <!-- Aviso para combinación de mesas físicas -->
+        <!-- Aviso para combinacion de mesas fisicas -->
         <div id="aviso-combinar" class="aviso-modo-mover aviso-combinacion oculto">
             <span><i class="fas fa-link"></i> Selecciona la primera mesa y luego la segunda para fusionarlas</span>
             <button id="btn-cancelar-combinar" class="btn-cancelar-mover">Cancelar</button>
@@ -105,27 +105,26 @@
                 </div>
             </div>
             
-            <!-- TARJETAS DE MÉTRICAS -->
-            <div class="data-cards-container">
+            <!-- TARJETAS DE METRICAS COMPACTAS (6 TARJETAS EN 1 FILA) -->
+            <div class="data-cards-container stats-grid-compact">
                 <div class="data-card occupancy"><div class="stat-info"><label class="data-label">Ocupadas</label><span id="stats-ocupadas" class="data-value">0</span></div></div>
                 <div class="data-card"><div class="stat-info"><label class="data-label">Reservadas</label><span id="stats-reservadas" class="data-value">0</span></div></div>
                 <div class="data-card"><div class="stat-info"><label class="data-label">Libres</label><span id="stats-libres" class="data-value">0</span></div></div>
-                <div class="data-card blocked"><div class="stat-info"><label class="data-label">Bloqueadas</label><span id="stats-bloqueadas" class="data-value">0</span></div></div>
-                <div class="data-card total-bookings"><div class="stat-info"><label class="data-label">Totales del Día</label><span id="stats-totales-dia" class="data-value">0</span></div></div>
-                <div class="data-card pax-total"><div class="stat-info"><label class="data-label">Pax Total</label><span id="stats-pax-total" class="data-value">0</span></div></div>
+                <div class="data-card pax-total"><div class="stat-info"><label class="data-label">Total Comensales</label><span id="stats-pax-total" class="data-value">0</span></div></div>
+                <div class="data-card total-bookings"><div class="stat-info"><label class="data-label">Total Reservas</label><span id="stats-totales-dia" class="data-value">0</span></div></div>
                 <div class="data-card"><div class="stat-info"><label class="data-label">% Ocupación</label><span id="stats-porcentaje-ocupacion" class="data-value">0%</span></div></div>
             </div>
 
-            <!-- Plano físico del restaurante -->
+            <!-- Plano fisico del restaurante -->
             <div id="plano-restaurante" class="tables-area tables-grid"></div>
         </div>
 
-        <!-- VISTA DE ANALÍTICA Y REPORTES (REDISENADA) -->
+        <!-- VISTA DE ANALITICA Y REPORTES (REDISENADA) -->
         <div id="vista-analitica" class="vista oculto">
             <div class="main-header"><h1 class="page-title">Reporte & Analítica</h1></div>
             
             <div class="analytics-grid">
-                <!-- TARJETA 1: GRÁFICA DE RENDIMIENTO POR ZONA -->
+                <!-- TARJETA 1: GRAFICA DE RENDIMIENTO POR ZONA -->
                 <div class="analytics-card">
                     <div class="card-header-flex">
                         <h3><i class="fas fa-chart-pie"></i> Ocupación por Zona</h3>
@@ -136,7 +135,7 @@
                     </div>
                 </div>
                 
-                <!-- TARJETA 2: MÉTRICAS CLAVE DEL DÍA -->
+                <!-- TARJETA 2: METRICAS CLAVE DEL DIA -->
                 <div class="analytics-card">
                     <h3><i class="fas fa-chart-bar"></i> Métricas del Día</h3>
                     <div class="metrics-grid">
@@ -163,7 +162,7 @@
     </main>
 </div>
 
-<!-- POPOVER FLOTANTE REDISEÑADO CON MESA Y NOTAS VISIBLES -->
+<!-- POPOVER FLOTANTE REDISENADO CON MESA Y NOTAS VISIBLES -->
 <div id="popover-rapido-mesa" class="popover-overlay oculto">
     <div class="popover-card">
         <div class="popover-header">
@@ -175,7 +174,7 @@
         </div>
 
         <div class="popover-body">
-            <!-- INFO BÁSICA DE 1 SOLA RESERVA / LIBRE -->
+            <!-- INFO BASICA DE 1 SOLA RESERVA / LIBRE -->
             <div id="pop-single-info" class="popover-info-grid">
                 <div class="info-cell"><i class="fas fa-user-group"></i> <strong id="pop-mesa-pax">--</strong> pax</div>
                 <div class="info-cell"><i class="fas fa-user"></i> <strong id="pop-cliente-nombre">Disponible</strong></div>
@@ -188,7 +187,7 @@
                 <i class="far fa-sticky-note"></i> <span id="pop-nota-texto"></span>
             </div>
 
-            <!-- BOTONES / LISTA CON SCROLL PARA MÚLTIPLES RESERVAS -->
+            <!-- BOTONES / LISTA CON SCROLL PARA MULTIPLES RESERVAS -->
             <div id="pop-acciones-group" class="popover-actions-container"></div>
         </div>
     </div>

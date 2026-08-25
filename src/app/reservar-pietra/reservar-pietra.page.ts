@@ -9,7 +9,8 @@ import {
   IonSelectOption, 
   IonTextarea, 
   IonButton,
-  IonIcon
+  IonIcon,
+  IonSpinner
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { 
@@ -21,7 +22,8 @@ import {
   callOutline, 
   mailOutline, 
   documentTextOutline,
-  gridOutline
+  gridOutline,
+  logoWhatsapp
 } from 'ionicons/icons';
 
 @Component({
@@ -31,12 +33,13 @@ import {
   standalone: true,
   imports: [
     IonContent, 
-    IonInput,
-    IonSelect,
-    IonSelectOption,
-    IonTextarea,
+    IonInput, 
+    IonSelect, 
+    IonSelectOption, 
+    IonTextarea, 
     IonButton,
     IonIcon,
+    IonSpinner,
     CommonModule, 
     FormsModule
   ]
@@ -56,6 +59,10 @@ export class ReservarPietraPage implements OnInit {
   todayDate: string = ''; 
   cargando: boolean = false;
 
+  // Datos de contacto oficial para grupos grandes
+  readonly TEL_RECEPCION: string = '4493937923';
+  readonly TEL_MOSTRADO: string = '449 393 79 23';
+
   // Zonas oficiales de Pietra Cucina
   zonasDisponibles: string[] = ['Terraza', 'Nivel bajo', 'Nivel medio', 'Pared lloron'];
 
@@ -68,6 +75,7 @@ export class ReservarPietraPage implements OnInit {
   };
 
   readonly BASE_URL = environment.apiUrl;
+
   constructor() {
     addIcons({
       calendarOutline,
@@ -78,13 +86,26 @@ export class ReservarPietraPage implements OnInit {
       callOutline,
       mailOutline,
       documentTextOutline,
-      gridOutline
+      gridOutline,
+      logoWhatsapp
     });
   }
 
   async ngOnInit() {
     this.calcularFechaMinimaLocal();
     await this.cargarDisenoMesas();
+  }
+
+  // Generadores dinamicos de enlaces para contacto de grupos
+  get enlaceLlamada(): string {
+    return `tel:${this.TEL_RECEPCION}`;
+  }
+
+  get enlaceWhatsapp(): string {
+    const textoMensaje = encodeURIComponent(
+      `Hola, deseo solicitar una reservacion para un grupo de ${this.personas} personas en Pietra Cucina.`
+    );
+    return `https://wa.me/52${this.TEL_RECEPCION}?text=${textoMensaje}`;
   }
 
   calcularFechaMinimaLocal() {
@@ -120,7 +141,7 @@ export class ReservarPietraPage implements OnInit {
         }
       }
     } catch (e) {
-      console.warn('⚠️ Usando distribución de mesas de Pietra Cucina de respaldo.');
+      console.warn('Usando distribucion de mesas de Pietra Cucina de respaldo.');
     }
   }
 
@@ -160,6 +181,7 @@ export class ReservarPietraPage implements OnInit {
       const resp = await fetch(`${this.BASE_URL}/api/pietra/reservas`);
       const todasLasReservas = await resp.json();
 
+      // 1. Filtrar reservaciones activas para el dia seleccionado
       const ocupadasHoy = todasLasReservas.filter((r: any) => 
         r.fecha === this.fecha && 
         r.estado !== 'finalizada' && 
@@ -170,6 +192,7 @@ export class ReservarPietraPage implements OnInit {
 
       const mesasDeZona = this.restauranteLayout[this.zona] || [];
 
+      // 2. Verificar ocupacion considerando mesas simples y fusionadas
       const mesaEstaOcupada = (m: any) => {
         const mIdStr = m.id.toString();
         if (idsMesasOcupadas.includes(mIdStr)) return true;
@@ -186,17 +209,37 @@ export class ReservarPietraPage implements OnInit {
         return false;
       };
 
-      const mesaIdeal = mesasDeZona.find((m: any) => 
-        m.c >= personasRequeridas && !mesaEstaOcupada(m)
-      );
+      // 3. Obtener todas las mesas libres de la zona elegida
+      const mesasLibres = mesasDeZona.filter((m: any) => !mesaEstaOcupada(m));
 
-      if (mesaIdeal) return mesaIdeal.id;
+      if (mesasLibres.length > 0) {
+        // Filtrar mesas con capacidad suficiente para el grupo
+        const candidatas = mesasLibres.filter((m: any) => Number(m.c) >= personasRequeridas);
 
-      const cualquierMesaLibre = mesasDeZona.find((m: any) => !mesaEstaOcupada(m));
-      if (cualquierMesaLibre) return cualquierMesaLibre.id;
+        if (candidatas.length > 0) {
+          candidatas.sort((a: any, b: any) => {
+            const desperdicioA = Number(a.c) - personasRequeridas;
+            const desperdicioB = Number(b.c) - personasRequeridas;
+
+            if (desperdicioA !== desperdicioB) {
+              return desperdicioA - desperdicioB;
+            }
+
+            if (a.isMerged && !b.isMerged) return 1;
+            if (!a.isMerged && b.isMerged) return -1;
+
+            return 0;
+          });
+
+          return candidatas[0].id;
+        }
+
+        mesasLibres.sort((a: any, b: any) => Number(b.c) - Number(a.c));
+        return mesasLibres[0].id;
+      }
 
     } catch (error) {
-      console.error('Error al buscar mesa en Pietra Cucina:', error);
+      console.error('Error al buscar mesa optima en Pietra Cucina:', error);
     }
 
     const mesasRespaldo = this.restauranteLayout[this.zona] || [];
@@ -204,6 +247,9 @@ export class ReservarPietraPage implements OnInit {
   }
 
   async confirmarReservacion() {
+    // Guardia de seguridad: evita multiples envios simultaneos
+    if (this.cargando) return;
+
     const regexTexto = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
     const regexEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     const regexTel = /^[0-9]+$/;
@@ -215,7 +261,7 @@ export class ReservarPietraPage implements OnInit {
 
     const checkHorario = this.validarHorarioServicio(this.fecha, this.hora);
     if (!checkHorario.valido) {
-      alert(`⚠️ ${checkHorario.mensaje}`);
+      alert(checkHorario.mensaje);
       return;
     }
 
@@ -225,8 +271,14 @@ export class ReservarPietraPage implements OnInit {
     }
 
     const pax = Number(this.personas);
-    if (isNaN(pax) || pax < 1 || pax > 50) {
-      alert('El número de personas debe ser un valor numérico entre 1 y 50.');
+    if (isNaN(pax) || pax < 1) {
+      alert('El número de personas debe ser como mínimo 1.');
+      return;
+    }
+
+    // Bloqueo estricto para grupos de 15 o mas
+    if (pax >= 15) {
+      alert(`Para reservaciones de 15 personas o más, por favor comunícate directamente con recepción al ${this.TEL_MOSTRADO} para coordinar el acomodo de mesas.`);
       return;
     }
 
@@ -241,34 +293,34 @@ export class ReservarPietraPage implements OnInit {
     }
 
     this.cargando = true;
-    const idMesaAsignada = await this.buscarMesaDisponible(pax);
-    const nombreCompleto = `${this.nombre.trim()} ${this.apellido.trim()}`;
-
-    const nuevaReserva = {
-      id: Date.now(), 
-      idRestaurante: 1, // Pietra Cucina
-      fecha: this.fecha,
-      hora: this.hora,
-      zona: this.zona,
-      idMesa: idMesaAsignada.toString(),
-      nombre: nombreCompleto,
-      personas: pax.toString(),
-      telefono: this.telefono.trim() || null,
-      email: this.email.trim() || null,
-      nota: this.nota.trim() || null,
-      estado: 'reservada',
-      isNewRecord: true,
-      tipoCorreo: 'crear'
-    };
 
     try {
+      const idMesaAsignada = await this.buscarMesaDisponible(pax);
+      const nombreCompleto = `${this.nombre.trim()} ${this.apellido.trim()}`;
+
+      const nuevaReserva = {
+        id: Date.now(), 
+        idRestaurante: 1, // Pietra Cucina
+        fecha: this.fecha,
+        hora: this.hora,
+        zona: this.zona,
+        idMesa: idMesaAsignada.toString(),
+        nombre: nombreCompleto,
+        personas: pax.toString(),
+        telefono: this.telefono.trim() || null,
+        email: this.email.trim() || null,
+        nota: this.nota.trim() || null,
+        estado: 'reservada',
+        isNewRecord: true,
+        tipoCorreo: 'crear'
+      };
+
       const response = await fetch(`${this.BASE_URL}/api/pietra/reservas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevaReserva)
       });
       const data = await response.json();
-      this.cargando = false;
 
       if (data.success || response.ok) {
         alert(`¡Reserva confirmada con éxito en Pietra Cucina!\nTe hemos asignado la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmación enviada a: ${this.email || 'tu correo'}`);
@@ -277,9 +329,11 @@ export class ReservarPietraPage implements OnInit {
         alert('Error al procesar tu registro. Por favor vuelve a intentarlo.');
       }
     } catch (e) {
-      this.cargando = false;
       console.error('Error al enviar la reserva:', e);
       alert('No se pudo conectar al servidor de reservas.');
+    } finally {
+      // Se garantiza el desbloqueo del boton
+      this.cargando = false;
     }
   }
 
