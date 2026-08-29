@@ -90,7 +90,7 @@
                     <h1 class="page-title">Plano - Rosa Mexicano</h1>
                     <div class="date-controls">
                         <button id="btn-prev-day" class="btn-icon-date"><i class="fas fa-chevron-left"></i></button>
-                        <input type="date" id="filtro-fecha-global" class="input-fecha-header" />
+                        <input type="date" id="filtro-fecha-global" class="input-fecha-header" [value]="fechaSeleccionada" />
                         <button id="btn-next-day" class="btn-icon-date"><i class="fas fa-chevron-right"></i></button>
                     </div>
                 </div>
@@ -119,12 +119,100 @@
             <div id="plano-restaurante" class="tables-area tables-grid"></div>
         </div>
 
-        <!-- VISTA DE ANALITICA Y REPORTES -->
+        <!-- VISTA DE ANALITICA Y REPORTES REDISENADA -->
         <div id="vista-analitica" class="vista oculto">
-            <div class="main-header"><h1 class="page-title">Reporte & Analítica - Rosa Mexicano</h1></div>
-            
-            <div class="analytics-grid">
-                <!-- TARJETA 1: GRAFICA DE RENDIMIENTO POR ZONA -->
+            <div class="main-header">
+                <div class="header-left">
+                    <h1 class="page-title">Reporte & Analítica - Rosa Mexicano</h1>
+                </div>
+                <!-- SELECTOR DE TURNOS -->
+                <div class="analytics-shift-filters">
+                    <button class="shift-btn active" data-shift="todo"><i class="fas fa-calendar-day"></i> Todo el Día</button>
+                    <button class="shift-btn" data-shift="comida"><i class="fas fa-sun"></i> Comida (13:00 - 18:00)</button>
+                    <button class="shift-btn" data-shift="cena"><i class="fas fa-moon"></i> Cena (18:00 - 23:00)</button>
+                </div>
+            </div>
+
+            <!-- GRID DE 8 KPIS EJECUTIVOS -->
+            <div class="analytics-kpi-grid">
+                <div class="kpi-card accent">
+                    <div class="kpi-icon"><i class="fas fa-users"></i></div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Total Comensales (PAX)</span>
+                        <strong id="kpi-total-pax" class="kpi-val">0</strong>
+                    </div>
+                </div>
+
+                <div class="kpi-card main">
+                    <div class="kpi-icon"><i class="fas fa-chair"></i></div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Mesas Operadas</span>
+                        <strong id="kpi-mesas-operadas" class="kpi-val">0</strong>
+                    </div>
+                </div>
+
+                <div class="kpi-card info">
+                    <div class="kpi-icon"><i class="fas fa-exchange-alt"></i></div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Reservas / Walk-in</span>
+                        <strong id="kpi-ratio-clientes" class="kpi-val">0 / 0</strong>
+                    </div>
+                </div>
+
+                <div class="kpi-card success">
+                    <div class="kpi-icon"><i class="fas fa-user-friends"></i></div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">PAX Promedio / Mesa</span>
+                        <strong id="kpi-avg-pax" class="kpi-val">0.0</strong>
+                    </div>
+                </div>
+
+                <div class="kpi-card warning">
+                    <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Hora Pico de Afluencia</span>
+                        <strong id="kpi-peak-hour" class="kpi-val">--:--</strong>
+                    </div>
+                </div>
+
+                <div class="kpi-card purple">
+                    <div class="kpi-icon"><i class="fas fa-map-marked-alt"></i></div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Zona de Mayor Demanda</span>
+                        <strong id="kpi-top-zone" class="kpi-val">--</strong>
+                    </div>
+                </div>
+
+                <div class="kpi-card teal">
+                    <div class="kpi-icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Tasa de Asistencia</span>
+                        <strong id="kpi-tasa-efectividad" class="kpi-val">100%</strong>
+                    </div>
+                </div>
+
+                <div class="kpi-card dark">
+                    <div class="kpi-icon"><i class="fas fa-sync"></i></div>
+                    <div class="kpi-data">
+                        <span class="kpi-label">Rotación de Mesas</span>
+                        <strong id="kpi-rotacion-mesas" class="kpi-val">0.0x</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENEDOR DE GRAFICAS EJECUTIVAS -->
+            <div class="analytics-charts-grid">
+                <!-- GRAFICA 1: CURVA DE FLUJO HORARIO (ANCHO COMPLETO) -->
+                <div class="analytics-card chart-card-wide">
+                    <div class="card-header-flex">
+                        <h3><i class="fas fa-chart-area"></i> Flujo de Comensales por Hora</h3>
+                    </div>
+                    <div class="chart-container-horarios">
+                        <canvas id="grafica-horarios"></canvas>
+                    </div>
+                </div>
+
+                <!-- GRAFICA 2: DEMANDA POR ZONAS -->
                 <div class="analytics-card">
                     <div class="card-header-flex">
                         <h3><i class="fas fa-chart-pie"></i> Ocupación por Zona</h3>
@@ -134,27 +222,14 @@
                         <canvas id="grafica-zonas"></canvas>
                     </div>
                 </div>
-                
-                <!-- TARJETA 2: METRICAS CLAVE DEL DIA -->
+
+                <!-- GRAFICA 3: ORIGEN DE CLIENTES (RESERVA VS WALKIN) -->
                 <div class="analytics-card">
-                    <h3><i class="fas fa-chart-bar"></i> Métricas del Día</h3>
-                    <div class="metrics-grid">
-                        <div class="metric-item">
-                            <span class="metric-label">PAX PROMEDIO</span>
-                            <strong id="data-avg-pax" class="metric-val text-accent">0.0</strong>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">MESAS TOTALES</span>
-                            <strong id="data-total-reservas" class="metric-val text-main">0</strong>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">HORA PICO</span>
-                            <strong id="data-peak-hour" class="metric-val text-success">--:--</strong>
-                        </div>
-                        <div class="metric-item">
-                            <span class="metric-label">ZONA TOP</span>
-                            <strong id="data-top-zone" class="metric-val text-purple">--</strong>
-                        </div>
+                    <div class="card-header-flex">
+                        <h3><i class="fas fa-chart-pie"></i> Origen de Comensales</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="grafica-origen"></canvas>
                     </div>
                 </div>
             </div>

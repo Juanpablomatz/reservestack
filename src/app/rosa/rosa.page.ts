@@ -34,6 +34,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   
   fechaSeleccionada: string = this.obtenerFechaActualLocal();
   zonaActiva: string = 'Terraza'; 
+  turnoSeleccionado: string = 'todo'; 
   
   modoMover: boolean = false;
   reservaAMoverId: any = null;
@@ -41,8 +42,12 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   socket: any = null;
 
   mesaSeleccionadaTemp: { id: number, zona: string } | null = null;
-  chartInstance: any = null;
-  tipoGrafica: string = 'pie';
+  
+  // INSTANCIAS DE GRAFICAS CHART.JS
+  chartInstanceZonas: any = null;
+  chartInstanceHorarios: any = null;
+  chartInstanceOrigen: any = null;
+  tipoGraficaZonas: string = 'pie';
 
   // --- VARIABLES DEL EDITOR ---
   modoEdicion: boolean = false;
@@ -70,7 +75,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     this.cargarReservasDesdeCache();
   }
 
-  // Redirige al panel principal
   irAlPanel() {
     this.router.navigate(['/panel']);
   }
@@ -92,7 +96,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     return Object.values(obj).some((arr: any) => Array.isArray(arr) && arr.length > 0);
   }
 
-  // Carga inmediata del cache local de reservaciones para pintar en milisegundo 0
   cargarReservasDesdeCache() {
     const cache = localStorage.getItem('rosa_reservas_cache');
     if (cache) {
@@ -111,12 +114,10 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     }
   }
 
-  // Renderizado instantaneo al montar la vista
   ngAfterViewInit() {
     this.ejecutarMontajeVista();
   }
 
-  // Ciclo de vida Ionic: Se ejecuta al recuperar foco
   ionViewDidEnter() {
     this.authService.guardarUltimaRuta('/rosa');
     this.ejecutarMontajeVista();
@@ -125,22 +126,18 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   ejecutarMontajeVista() {
     this.reintentosDibujo = 0;
 
-    // 1. Sincronizar input de fecha inmediatamente si existe
     const inputFecha = document.getElementById('filtro-fecha-global') as HTMLInputElement;
     if (inputFecha) {
       inputFecha.value = this.fechaSeleccionada;
     }
 
-    // 2. Renderizado sincronico e instantaneo con datos disponibles
     this.cargarLayoutPorFecha(this.fechaSeleccionada);
     this.dibujarMesas(this.zonaActiva);
     this.actualizarVistaCompleta();
 
-    // 3. Inicializacion de eventos y socket si es primera vez
     if (!this.sistemaInicializado) {
       this.inicializarSistema();
     } else {
-      // 4. Actualizacion en segundo plano con el servidor
       this.cargarDisenoMesas();
       this.cargarReservaciones();
     }
@@ -256,7 +253,13 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     if (this.socket) this.socket.disconnect();
-    if (this.chartInstance) this.chartInstance.destroy();
+    this.destruirGraficas();
+  }
+
+  destruirGraficas() {
+    if (this.chartInstanceZonas) { this.chartInstanceZonas.destroy(); this.chartInstanceZonas = null; }
+    if (this.chartInstanceHorarios) { this.chartInstanceHorarios.destroy(); this.chartInstanceHorarios = null; }
+    if (this.chartInstanceOrigen) { this.chartInstanceOrigen.destroy(); this.chartInstanceOrigen = null; }
   }
 
   asegurarCoordenadasGrid() {
@@ -277,14 +280,16 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     this.configurarNavegacionSidebar();
     this.configurarFiltros();
     this.configurarBotonesZonas();
+    this.configurarBotonesTurnos();
     this.configurarMenuContextual();
     this.configurarModales(); 
     this.configurarFormularioReserva();
     this.configurarOpcionesEditor();
     
     document.getElementById('btn-toggle-chart')?.addEventListener('click', () => {
-      this.tipoGrafica = this.tipoGrafica === 'pie' ? 'bar' : 'pie';
-      this.actualizarVistaCompleta();
+      this.tipoGraficaZonas = this.tipoGraficaZonas === 'pie' ? 'bar' : 'pie';
+      const reservasDelDia = this.todasLasReservas.filter(r => !r.fecha || r.fecha === this.fechaSeleccionada);
+      this.actualizarAnalitica(reservasDelDia);
     });
 
     document.addEventListener('click', (e: any) => {
@@ -326,7 +331,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
     this.sistemaInicializado = true;
 
-    // Cargas asincronas en segundo plano
     this.cargarDisenoMesas();
     this.cargarReservaciones();
   }
@@ -348,7 +352,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
             setTimeout(() => {
               const reservasDelDia = this.todasLasReservas.filter(r => !r.fecha || r.fecha === this.fechaSeleccionada);
               this.actualizarAnalitica(reservasDelDia);
-            }, 50);
+            }, 60);
           }
         }
       });
@@ -356,6 +360,20 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
     document.getElementById('btn-logout')?.addEventListener('click', () => {
       this.irAlPanel();
+    });
+  }
+
+  configurarBotonesTurnos() {
+    const botonesTurno = document.querySelectorAll('.shift-btn');
+    botonesTurno.forEach(btn => {
+      btn.addEventListener('click', (e: any) => {
+        botonesTurno.forEach(b => b.classList.remove('active'));
+        const el = e.currentTarget as HTMLElement;
+        el.classList.add('active');
+        this.turnoSeleccionado = el.dataset['shift'] || 'todo';
+        const reservasDelDia = this.todasLasReservas.filter(r => !r.fecha || r.fecha === this.fechaSeleccionada);
+        this.actualizarAnalitica(reservasDelDia);
+      });
     });
   }
 
@@ -967,7 +985,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     const ocupadas = reservasDelDia.filter(r => r.estado === 'ocupada').length;
     const reservadas = reservasDelDia.filter(r => r.estado === 'reservada' || r.estado === 'confirmada').length;
     
-    // Suma acumulada de todos los comensales (PAX) del dia
     let totalComensalesDia = 0;
     reservasDelDia.forEach(r => {
       if (r.estado !== 'cancelada' && r.estado !== 'bloqueada') {
@@ -1176,6 +1193,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         crearBotonPop('Marcar Llegada', 'btn-llegada', 'fa-bell-concierge', () => {
           popover.classList.add('oculto');
           realRes.estado = 'ocupada';
+          this.guardarReservasEnCache();
           this.guardarReservaEnServidor(realRes);
           this.actualizarVistaCompleta();
         });
@@ -1191,6 +1209,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           popover.classList.add('oculto');
           if (confirm('¿Cancelar la reserva y notificar al cliente por correo?')) {
             realRes.estado = 'cancelada';
+            this.guardarReservasEnCache();
             this.guardarReservaEnServidor(realRes, 'noshow');
             this.actualizarVistaCompleta();
           }
@@ -1203,6 +1222,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         crearBotonPop('Liberar Mesa', 'btn-liberar', 'fa-broom', () => {
           popover.classList.add('oculto');
           realRes.estado = 'liberada';
+          this.guardarReservasEnCache();
           this.guardarReservaEnServidor(realRes);
           this.actualizarVistaCompleta();
         });
@@ -1218,6 +1238,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         crearBotonPop('Desbloquear', 'btn-liberar', 'fa-unlock', () => {
           popover.classList.add('oculto');
           realRes.estado = 'finalizada';
+          this.guardarReservasEnCache();
           this.guardarReservaEnServidor(realRes);
           this.actualizarVistaCompleta();
         });
@@ -1300,6 +1321,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           e.stopPropagation();
           popover.classList.add('oculto');
           realItem.estado = 'ocupada';
+          this.guardarReservasEnCache();
           this.guardarReservaEnServidor(realItem);
           this.actualizarVistaCompleta();
         });
@@ -1308,6 +1330,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           e.stopPropagation();
           popover.classList.add('oculto');
           realItem.estado = 'liberada';
+          this.guardarReservasEnCache();
           this.guardarReservaEnServidor(realItem);
           this.actualizarVistaCompleta();
         });
@@ -1333,6 +1356,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           popover.classList.add('oculto');
           if (confirm(`¿Cancelar reserva de ${realItem.nombre} y enviar correo?`)) {
             realItem.estado = 'cancelada';
+            this.guardarReservasEnCache();
             this.guardarReservaEnServidor(realItem, 'noshow');
             this.actualizarVistaCompleta();
           }
@@ -1789,7 +1813,9 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     if (modalDetalle) modalDetalle.classList.remove('oculto');
   }
 
-  // METODOS DE ANALITICA Y GRAFICAS ROSA MEXICANO
+  // =========================================================================
+  // MOTOR DE ANALITICA Y REPORTES AVANZADO - ROSA MEXICANO
+  // =========================================================================
   async cargarChartJS(): Promise<void> {
     return new Promise((resolve) => {
       if ((window as any).Chart) {
@@ -1805,28 +1831,56 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   }
 
   actualizarAnalitica(reservasDelDia: any[]) {
-    const activas = reservasDelDia.filter(r => r.estado !== 'finalizada' && r.estado !== 'cancelada' && r.estado !== 'liberada');
-    const totalMesas = activas.length;
-    const totalPax = activas.reduce((sum, r) => sum + parseInt(r.personas || 0), 0);
-    const paxPromedio = totalMesas > 0 ? (totalPax / totalMesas).toFixed(1) : '0.0';
+    // 1. Filtrar por Turno (Todo / Comida / Cena)
+    const reservasFiltradasPorTurno = reservasDelDia.filter(r => {
+      if (this.turnoSeleccionado === 'todo') return true;
+      if (!r.hora) return true;
+      const horaNum = parseInt(r.hora.split(':')[0], 10);
+      if (this.turnoSeleccionado === 'comida') return horaNum >= 13 && horaNum < 18;
+      if (this.turnoSeleccionado === 'cena') return horaNum >= 18 && horaNum <= 23;
+      return true;
+    });
 
+    // 2. Clasificacion: Atendidas / Activas vs Canceladas
+    const efectivas = reservasFiltradasPorTurno.filter(r => r.estado !== 'cancelada' && r.estado !== 'bloqueada');
+    const canceladas = reservasFiltradasPorTurno.filter(r => r.estado === 'cancelada');
+
+    // 3. Calculos de KPIs
+    const totalComensalesPax = efectivas.reduce((sum, r) => sum + parseInt(r.personas || 0, 10), 0);
+    const totalMesasOperadas = efectivas.length;
+
+    let totalReservasWeb = 0;
+    let totalWalkins = 0;
+    efectivas.forEach(r => {
+      const nombreLower = (r.nombre || '').toLowerCase();
+      if (nombreLower.includes('walk-in') || nombreLower.includes('walkin')) {
+        totalWalkins++;
+      } else {
+        totalReservasWeb++;
+      }
+    });
+
+    const paxPromedio = totalMesasOperadas > 0 ? (totalComensalesPax / totalMesasOperadas).toFixed(1) : '0.0';
+
+    // Hora Pico
     const horasConteo: { [key: string]: number } = {};
-    activas.forEach(r => {
+    efectivas.forEach(r => {
       if (r.hora) {
         const horaCorta = r.hora.substring(0, 2) + ':00';
-        horasConteo[horaCorta] = (horasConteo[horaCorta] || 0) + 1;
+        horasConteo[horaCorta] = (horasConteo[horaCorta] || 0) + parseInt(r.personas || 0, 10);
       }
     });
 
     let horaPico = '--:--';
-    let maxHoraCount = 0;
+    let maxPaxHora = 0;
     Object.keys(horasConteo).forEach(h => {
-      if (horasConteo[h] > maxHoraCount) {
-        maxHoraCount = horasConteo[h];
+      if (horasConteo[h] > maxPaxHora) {
+        maxPaxHora = horasConteo[h];
         horaPico = h;
       }
     });
 
+    // Zonas de Rosa Mexicano
     const zonasConteo: { [key: string]: number } = {
       'Terraza': 0,
       'Piso': 0,
@@ -1834,38 +1888,117 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       'Cava': 0
     };
 
-    activas.forEach(r => {
+    efectivas.forEach(r => {
       if (r.zona && zonasConteo[r.zona] !== undefined) {
-        zonasConteo[r.zona] += 1;
+        zonasConteo[r.zona] += parseInt(r.personas || 0, 10);
       }
     });
 
     let zonaTop = '--';
-    let maxZonaCount = 0;
+    let maxPaxZona = 0;
     Object.keys(zonasConteo).forEach(z => {
-      if (zonasConteo[z] > maxZonaCount) {
-        maxZonaCount = zonasConteo[z];
+      if (zonasConteo[z] > maxPaxZona) {
+        maxPaxZona = zonasConteo[z];
         zonaTop = z;
       }
     });
 
-    const el = (id: string, val: string) => { const e = document.getElementById(id); if (e) e.textContent = val; };
-    el('data-avg-pax', paxPromedio);
-    el('data-total-reservas', totalMesas.toString());
-    el('data-peak-hour', horaPico);
-    el('data-top-zone', zonaTop);
+    // Tasa de Efectividad (Asistencia vs Cancelacion)
+    const totalIntentos = efectivas.length + canceladas.length;
+    const tasaEfectividadNum = totalIntentos > 0 ? Math.round((efectivas.length / totalIntentos) * 100) : 100;
+    const tasaEfectividadTxt = `${tasaEfectividadNum}%`;
 
-    this.dibujarGrafica(zonasConteo);
+    // Indice de Rotacion de Mesas
+    let totalMesasFisicas = 0;
+    Object.values(this.restaurante).forEach((arr: any) => totalMesasFisicas += (Array.isArray(arr) ? arr.length : 0));
+    const rotacionMesas = totalMesasFisicas > 0 ? (totalMesasOperadas / totalMesasFisicas).toFixed(1) + 'x' : '0.0x';
+
+    // 4. Actualizar el DOM de los 8 KPIs
+    const el = (id: string, val: string | number) => { 
+      const e = document.getElementById(id); 
+      if (e) e.textContent = val.toString(); 
+    };
+
+    el('kpi-total-pax', totalComensalesPax);
+    el('kpi-mesas-operadas', totalMesasOperadas);
+    el('kpi-ratio-clientes', `${totalReservasWeb} Res / ${totalWalkins} Walk`);
+    el('kpi-avg-pax', `${paxPromedio} pax`);
+    el('kpi-peak-hour', horaPico !== '--:--' ? `${horaPico} (${maxPaxHora}p)` : '--:--');
+    el('kpi-top-zone', zonaTop);
+    el('kpi-tasa-efectividad', tasaEfectividadTxt);
+    el('kpi-rotacion-mesas', rotacionMesas);
+
+    // 5. Renderizar las 3 Graficas
+    this.renderizarGraficasAnalitica(efectivas, zonasConteo, totalReservasWeb, totalWalkins);
   }
 
-  async dibujarGrafica(datosZonas: any) {
+  async renderizarGraficasAnalitica(efectivas: any[], datosZonas: any, reservasWeb: number, walkins: number) {
     await this.cargarChartJS();
+    if (!(window as any).Chart) return;
 
+    this.dibujarGraficaHorarios(efectivas);
+    this.dibujarGraficaZonas(datosZonas);
+    this.dibujarGraficaOrigen(reservasWeb, walkins);
+  }
+
+  // GRAFICA 1: FLUJO HORARIO (13:00 A 23:00)
+  dibujarGraficaHorarios(efectivas: any[]) {
+    const canvas = document.getElementById('grafica-horarios') as HTMLCanvasElement;
+    if (!canvas) return;
+
+    if (this.chartInstanceHorarios) {
+      this.chartInstanceHorarios.destroy();
+      this.chartInstanceHorarios = null;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const horasRango = ['13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'];
+    const comensalesPorHora = horasRango.map(h => {
+      const hInt = parseInt(h.split(':')[0], 10);
+      return efectivas.reduce((acc, r) => {
+        if (!r.hora) return acc;
+        const rHora = parseInt(r.hora.split(':')[0], 10);
+        return rHora === hInt ? acc + parseInt(r.personas || 0, 10) : acc;
+      }, 0);
+    });
+
+    this.chartInstanceHorarios = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: horasRango,
+        datasets: [{
+          label: 'Comensales (PAX)',
+          data: comensalesPorHora,
+          backgroundColor: 'rgba(229, 0, 126, 0.75)',
+          borderColor: '#e5007e',
+          borderWidth: 2,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 2 } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  // GRAFICA 2: DEMANDA POR ZONAS (ROSA MEXICANO)
+  dibujarGraficaZonas(datosZonas: any) {
     const canvas = document.getElementById('grafica-zonas') as HTMLCanvasElement;
-    if (!canvas || !(window as any).Chart) return;
+    if (!canvas) return;
 
-    if (this.chartInstance) {
-      this.chartInstance.destroy();
+    if (this.chartInstanceZonas) {
+      this.chartInstanceZonas.destroy();
+      this.chartInstanceZonas = null;
     }
 
     const ctx = canvas.getContext('2d');
@@ -1873,20 +2006,19 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
     const labels = Object.keys(datosZonas);
     const data = Object.values(datosZonas);
-
     const colors = ['#e5007e', '#3498db', '#f39c12', '#9b59b6'];
 
-    this.chartInstance = new Chart(canvas, {
-      type: this.tipoGrafica === 'pie' ? 'doughnut' : 'bar',
+    this.chartInstanceZonas = new Chart(canvas, {
+      type: this.tipoGraficaZonas === 'pie' ? 'doughnut' : 'bar',
       data: {
         labels: labels,
         datasets: [{
-          label: 'Reservas por Zona',
+          label: 'Comensales por Zona',
           data: data,
           backgroundColor: colors,
-          borderColor: '#281622',
+          borderColor: '#ffffff',
           borderWidth: 2,
-          borderRadius: this.tipoGrafica === 'bar' ? 6 : 0
+          borderRadius: this.tipoGraficaZonas === 'bar' ? 6 : 0
         }]
       },
       options: {
@@ -1895,16 +2027,49 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         plugins: {
           legend: {
             position: 'bottom',
-            labels: {
-              font: { family: 'Segoe UI', size: 12, weight: 'bold' },
-              color: '#281622',
-              padding: 15
-            }
+            labels: { font: { family: 'Segoe UI', size: 11, weight: 'bold' }, color: '#281622', padding: 10 }
           }
         },
-        scales: this.tipoGrafica === 'bar' ? {
-          y: { beginAtZero: true, ticks: { stepSize: 1 } }
+        scales: this.tipoGraficaZonas === 'bar' ? {
+          y: { beginAtZero: true, ticks: { stepSize: 2 } }
         } : {}
+      }
+    });
+  }
+
+  // GRAFICA 3: ORIGEN DE COMENSALES (RESERVAS WEB VS WALK-IN)
+  dibujarGraficaOrigen(reservasWeb: number, walkins: number) {
+    const canvas = document.getElementById('grafica-origen') as HTMLCanvasElement;
+    if (!canvas) return;
+
+    if (this.chartInstanceOrigen) {
+      this.chartInstanceOrigen.destroy();
+      this.chartInstanceOrigen = null;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    this.chartInstanceOrigen = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: ['Reservas Web', 'Walk-ins (Puerta)'],
+        datasets: [{
+          data: [reservasWeb, walkins],
+          backgroundColor: ['#e5007e', '#34495e'],
+          borderColor: '#ffffff',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { font: { family: 'Segoe UI', size: 11, weight: 'bold' }, color: '#281622', padding: 10 }
+          }
+        }
       }
     });
   }

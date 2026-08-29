@@ -87,7 +87,7 @@
 
 /* --- CONTENIDO PRINCIPAL --- */
 .main-content { flex-grow: 1; padding: 20px; display: flex; flex-direction: column; overflow-y: auto; position: relative; box-sizing: border-box; }
-.main-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.main-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
 .header-left { display: flex; align-items: center; gap: 15px; }
 .page-title { margin: 0; font-size: 24px; color: var(--bg-sidebar); font-family: 'Times New Roman', serif; font-weight: bold; }
 
@@ -148,6 +148,207 @@
 .data-card.pax-total { border-color: var(--accent); }
 .data-card.total-bookings { border-color: #3498db; } 
 .data-card:nth-child(6) { border-color: #8e44ad; }
+
+/* ========================================================
+   VISTA ANALITICA Y REPORTES REDISENADA - PIETRA CUCINA
+   ======================================================== */
+
+/* --- SELECTOR DE TURNOS --- */
+.analytics-shift-filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-card);
+    padding: 4px 8px;
+    border-radius: 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+
+    .shift-btn {
+        background: transparent;
+        border: none;
+        padding: 6px 14px;
+        border-radius: 18px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+
+        &:hover {
+            color: var(--accent);
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        &.active {
+            background-color: var(--accent);
+            color: var(--bg-sidebar);
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(212, 175, 55, 0.35);
+        }
+    }
+}
+
+/* --- GRID DE 8 KPIS EJECUTIVOS --- */
+.analytics-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+
+    @media (max-width: 1200px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    @media (max-width: 600px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.kpi-card {
+    background-color: var(--bg-card);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid #edf2f7;
+    border-left: 4px solid var(--accent);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    transition: transform 0.2s, box-shadow 0.2s;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    }
+
+    .kpi-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .kpi-data {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        overflow: hidden;
+
+        .kpi-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+
+        .kpi-val {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--bg-sidebar);
+            line-height: 1.1;
+        }
+    }
+
+    /* Variantes de color por KPI */
+    &.accent {
+        border-left-color: var(--accent);
+        .kpi-icon { background: rgba(212, 175, 55, 0.15); color: #b8972b; }
+    }
+    &.main {
+        border-left-color: var(--bg-sidebar);
+        .kpi-icon { background: rgba(44, 62, 80, 0.12); color: var(--bg-sidebar); }
+    }
+    &.info {
+        border-left-color: #3498db;
+        .kpi-icon { background: rgba(52, 152, 219, 0.12); color: #3498db; }
+    }
+    &.success {
+        border-left-color: #27ae60;
+        .kpi-icon { background: rgba(39, 174, 96, 0.12); color: #27ae60; }
+    }
+    &.warning {
+        border-left-color: #f39c12;
+        .kpi-icon { background: rgba(243, 156, 18, 0.12); color: #f39c12; }
+    }
+    &.purple {
+        border-left-color: #8e44ad;
+        .kpi-icon { background: rgba(142, 68, 173, 0.12); color: #8e44ad; }
+    }
+    &.teal {
+        border-left-color: #16a085;
+        .kpi-icon { background: rgba(22, 160, 133, 0.12); color: #16a085; }
+    }
+    &.dark {
+        border-left-color: #34495e;
+        .kpi-icon { background: rgba(52, 73, 94, 0.12); color: #34495e; }
+    }
+}
+
+/* --- GRID DE GRAFICAS --- */
+.analytics-charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+
+    @media (max-width: 1000px) {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-card-wide {
+        grid-column: span 2;
+
+        @media (max-width: 1000px) {
+            grid-column: span 1;
+        }
+    }
+}
+
+.analytics-card {
+    background-color: var(--bg-card);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.04);
+    border: 1px solid #edf2f7;
+
+    h3 {
+        margin: 0;
+        font-size: 15px;
+        color: var(--bg-sidebar);
+        font-family: 'Times New Roman', serif;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        i { color: var(--accent); }
+    }
+}
+
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-container-horarios {
+    position: relative;
+    width: 100%;
+    height: 280px;
+}
 
 /* --- AREA DE MESAS (MODO ABSOLUTO RESPONSIVO) --- */
 .tables-area { 
@@ -913,96 +1114,4 @@
   padding: 0 10px;
   height: 38px;
   input { border: none !important; background: transparent !important; flex: 1; font-size: 13px; outline: none; }
-}
-
-/* --- VISTA ANALITICA / REPORTES --- */
-.analytics-grid {
-    display: grid;
-    grid-template-columns: 1.4fr 1fr;
-    gap: 20px;
-    align-items: start;
-}
-
-.analytics-card {
-    background-color: var(--bg-card);
-    border-radius: 12px;
-    padding: 22px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.05);
-    border: 1px solid #eee;
-
-    h3 {
-        margin: 0 0 18px 0;
-        font-size: 15px;
-        color: var(--bg-sidebar);
-        font-family: 'Times New Roman', serif;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-
-        i { color: var(--accent); }
-    }
-}
-
-.card-header-flex {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 18px;
-
-    h3 { margin: 0; }
-}
-
-/* Contenedor de la grafica Chart.js */
-.chart-container {
-    position: relative;
-    width: 100%;
-    height: 280px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Grid de metricas clave */
-.metrics-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-}
-
-.metric-item {
-    background-color: var(--bg-item);
-    border: 1px solid #eee;
-    border-left: 3px solid var(--accent);
-    border-radius: 8px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    transition: transform 0.2s;
-
-    &:hover { transform: translateY(-2px); }
-}
-
-.metric-label {
-    font-size: 10px;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: bold;
-}
-
-.metric-val {
-    font-size: 22px;
-    font-weight: bold;
-    color: var(--bg-sidebar);
-}
-
-.text-accent { color: var(--accent) !important; }
-.text-main { color: var(--bg-sidebar) !important; }
-.text-success { color: #27ae60 !important; }
-.text-purple { color: #8e44ad !important; }
-
-/* Responsive: apilar en pantallas angostas */
-@media (max-width: 900px) {
-    .analytics-grid { grid-template-columns: 1fr; }
 }
