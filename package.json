@@ -28,6 +28,8 @@
     "@capacitor/keyboard": "8.0.3",
     "@capacitor/status-bar": "8.0.2",
     "@ionic/angular": "^8.0.0",
+    "@sentry/angular": "^10.72.0",
+    "@sentry/node": "^10.72.0",
     "bcryptjs": "^2.4.3",
     "chart.js": "^4.5.1",
     "cors": "^2.8.6",

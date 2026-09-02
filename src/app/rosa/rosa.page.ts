@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, OnDestroy, NgZone } from '@angular/core';
+import { Component, AfterViewInit, OnDestroy, NgZone, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -67,6 +67,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   constructor(
     private authService: AuthService, 
     private ngZone: NgZone,
+    private cdr: ChangeDetectorRef,
     private router: Router
   ) {
     this.authService.guardarUltimaRuta('/rosa');
@@ -114,6 +115,12 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     }
   }
 
+  ionViewWillEnter() {
+    this.authService.guardarUltimaRuta('/rosa');
+    this.cargarReservasDesdeCache();
+    this.cargarLayoutPorFecha(this.fechaSeleccionada);
+  }
+
   ngAfterViewInit() {
     this.ejecutarMontajeVista();
   }
@@ -141,32 +148,29 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       this.cargarDisenoMesas();
       this.cargarReservaciones();
     }
+
+    this.cdr.detectChanges();
   }
 
   cargarLayoutPorFecha(fecha: string) {
-    if (this.tieneMesasValidas(this.disenoMaestro)) {
-      this.restaurante = JSON.parse(JSON.stringify(this.disenoMaestro));
-      this.asegurarCoordenadasGrid();
-      return;
-    }
-
     const keyFecha = `rosa_layout_${fecha}`;
     const layoutGuardado = localStorage.getItem(keyFecha);
-    let disenoBase = this.PLANO_DEFECTO;
 
     if (layoutGuardado) {
       try {
         const parsed = JSON.parse(layoutGuardado);
         if (this.tieneMesasValidas(parsed)) {
           this.restaurante = parsed;
-        } else {
-          this.restaurante = JSON.parse(JSON.stringify(disenoBase));
+          this.asegurarCoordenadasGrid();
+          return;
         }
-      } catch(e) {
-        this.restaurante = JSON.parse(JSON.stringify(disenoBase));
-      }
+      } catch(e) {}
+    }
+
+    if (this.tieneMesasValidas(this.disenoMaestro)) {
+      this.restaurante = JSON.parse(JSON.stringify(this.disenoMaestro));
     } else {
-      this.restaurante = JSON.parse(JSON.stringify(disenoBase));
+      this.restaurante = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
     }
     this.asegurarCoordenadasGrid();
   }
@@ -222,9 +226,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         const data = await resp.json();
         if (this.tieneMesasValidas(data)) {
           this.disenoMaestro = data;
-          this.restaurante = JSON.parse(JSON.stringify(data));
-          this.asegurarCoordenadasGrid();
-          this.guardarLayoutFechaActual();
+          this.cargarLayoutPorFecha(this.fechaSeleccionada);
           this.dibujarMesas(this.zonaActiva);
           this.actualizarVistaCompleta();
           return;
@@ -309,6 +311,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
             this.todasLasReservas = r; 
             this.guardarReservasEnCache();
             this.actualizarVistaCompleta(); 
+            this.cdr.detectChanges();
           });
         });
 
@@ -316,11 +319,10 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           this.ngZone.run(() => {
             if (this.tieneMesasValidas(diseno)) {
               this.disenoMaestro = diseno;
-              this.restaurante = JSON.parse(JSON.stringify(diseno));
-              this.asegurarCoordenadasGrid();
-              this.guardarLayoutFechaActual();
+              this.cargarLayoutPorFecha(this.fechaSeleccionada);
               this.dibujarMesas(this.zonaActiva);
               this.actualizarVistaCompleta();
+              this.cdr.detectChanges();
             }
           });
         });
@@ -755,12 +757,12 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
   async fusionarMesas(mesaA: any, mesaB: any, esPermanente: boolean) {
     const zona = this.zonaActiva;
-    const nuevoId = mesaA.id * 1000 + mesaB.id; 
+    const nuevoId = Date.now(); 
     const esVertical = Math.abs(mesaA.y - mesaB.y) > Math.abs(mesaA.x - mesaB.x);
 
     const mesaFusionada = {
       id: nuevoId,
-      c: mesaA.c + mesaB.c, 
+      c: Number(mesaA.c) + Number(mesaB.c), 
       x: Math.round((mesaA.x + mesaB.x) / 2), 
       y: Math.round((mesaA.y + mesaB.y) / 2),
       isMerged: true,
@@ -774,17 +776,28 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
     this.restaurante[zona] = this.restaurante[zona].filter((m: any) => m.id !== mesaA.id && m.id !== mesaB.id);
     this.restaurante[zona].push(mesaFusionada);
+
     if (esPermanente) {
       try {
         await this.guardarDisenoPermanente();
+        alert(`Fusion permanente guardada en el servidor como Mesa ${mesaFusionada.displayId}.`);
       } catch (error) {
         this.disenoMaestro = JSON.parse(JSON.stringify(this.restaurante));
-        console.warn('La fusion permanente no se pudo sincronizar con el servidor.', error);
+        alert(`Fusion guardada localmente como permanente.`);
       }
+    } else {
+      this.guardarLayoutFechaActual();
+      alert(`Fusion temporal (solo para la fecha ${this.fechaSeleccionada}) aplicada como Mesa ${mesaFusionada.displayId}.`);
     }
-    this.guardarLayoutFechaActual();
-    alert(`Mesas fusionadas con exito para Rosa Mexicano como Mesa ${mesaFusionada.displayId}.`);
+
+    // Salir del modo combinar y refrescar vista sin necesidad de presionar Guardar Distribucion
+    this.modoCombinar = false;
+    this.mesaACombinar = null;
+    this.modoEdicion = false;
+    document.getElementById('aviso-combinar')?.classList.add('oculto');
+    document.getElementById('toolbar-editor')?.classList.add('oculto');
     this.dibujarMesas(zona);
+    this.actualizarVistaCompleta();
   }
 
   desvincularMesa(mesa: any) {
@@ -830,26 +843,44 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   }
 
   reservaPerteneceAMesa(res: any, mesa: any): boolean {
-    if (!res || !res.idMesa) return false;
+    if (!res || !res.idMesa || !mesa) return false;
     const resIdStr = res.idMesa.toString().trim().toLowerCase();
     const mesaIdStr = mesa.id ? mesa.id.toString().trim().toLowerCase() : '';
     const displayIdStr = mesa.displayId ? mesa.displayId.toString().trim().toLowerCase() : '';
 
-    if (resIdStr === mesaIdStr || (displayIdStr && resIdStr === displayIdStr)) return true;
+    // 1. Coincidencia directa por id o por displayId
+    if (resIdStr === mesaIdStr || (displayIdStr && resIdStr === displayIdStr)) {
+      return true;
+    }
 
+    // 2. Si la mesa es fusionada
     if (mesa.isMerged) {
       if (displayIdStr.includes('+')) {
         const subIds = displayIdStr.split('+').map((s: string) => s.trim().toLowerCase());
         if (subIds.includes(resIdStr)) return true;
       }
-      
+
+      // Si coincide con originalTables, solo atribuir si NO existe otra mesa independiente activa que tenga ese mismo ID
       if (mesa.originalTables && Array.isArray(mesa.originalTables)) {
         const coincideConOriginal = mesa.originalTables.some((orig: any) => {
           const origId = orig.id ? orig.id.toString().trim().toLowerCase() : '';
           const origDisplay = orig.displayId ? orig.displayId.toString().trim().toLowerCase() : '';
           return resIdStr === origId || (origDisplay && resIdStr === origDisplay);
         });
-        if (coincideConOriginal) return true;
+
+        if (coincideConOriginal) {
+          const mesasZona = this.restaurante[mesa.zona || this.zonaActiva] || [];
+          const existeMesaIndependiente = mesasZona.some((otraMesa: any) => {
+            if (otraMesa === mesa || otraMesa.id === mesa.id) return false;
+            const otraIdStr = otraMesa.id ? otraMesa.id.toString().trim().toLowerCase() : '';
+            const otraDisplayStr = otraMesa.displayId ? otraMesa.displayId.toString().trim().toLowerCase() : '';
+            return otraIdStr === resIdStr || (otraDisplayStr && otraDisplayStr === resIdStr);
+          });
+
+          if (!existeMesaIndependiente) {
+            return true;
+          }
+        }
       }
     }
 
@@ -861,10 +892,10 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
     document.querySelectorAll('.mesa').forEach((m) => {
       const mesaEl = m as HTMLElement;
-      const idMesa = parseInt(mesaEl.id.split('-')[1], 10);
+      const idMesaStr = mesaEl.id.split('-')[1];
       let mesaFisica = null;
       for(const z in this.restaurante) {
-        const found = this.restaurante[z].find((x:any) => x.id === idMesa);
+        const found = this.restaurante[z].find((x:any) => x.id.toString() === idMesaStr);
         if(found) mesaFisica = found;
       }
       
@@ -993,10 +1024,14 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     });
 
     let totalMesasFisicas = 0;
-    Object.values(this.restaurante).forEach((zona: any) => totalMesasFisicas += zona.length);
+    Object.values(this.restaurante).forEach((zona: any) => {
+      if (Array.isArray(zona)) {
+        totalMesasFisicas += zona.length;
+      }
+    });
+
     const libres = Math.max(0, totalMesasFisicas - (ocupadas + reservadas));
     const porcentaje = totalMesasFisicas > 0 ? Math.round((ocupadas / totalMesasFisicas) * 100) : 0;
-    const totalesDia = reservasDelDia.filter(r => r.estado !== 'cancelada' && r.estado !== 'bloqueada').length;
 
     const act = (id: string, val: string | number) => { 
       const el = document.getElementById(id); 
@@ -1007,7 +1042,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     act('stats-reservadas', reservadas); 
     act('stats-libres', libres); 
     act('stats-pax-total', totalComensalesDia); 
-    act('stats-totales-dia', totalesDia); 
+    act('stats-totales-dia', totalMesasFisicas); 
     act('stats-porcentaje-ocupacion', `${porcentaje}%`);
   }
 
@@ -1047,9 +1082,6 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         const esPermanente = await this.solicitarTipoFusion();
         if (esPermanente === null) return;
         await this.fusionarMesas(this.mesaACombinar, mesa, esPermanente);
-        this.modoCombinar = false;
-        this.mesaACombinar = null;
-        document.getElementById('aviso-combinar')?.classList.add('oculto');
       }
       return; 
     }
@@ -1614,7 +1646,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
       const choques = this.todasLasReservas.filter(r => 
         r.fecha === fechaElegida && 
-        r.idMesa.toString() === idMesaElegida.toString() && 
+        r.idMesa && r.idMesa.toString() === idMesaElegida.toString() && 
         r.estado !== 'finalizada' && r.estado !== 'cancelada' && r.estado !== 'liberada' && 
         Number(r.id) !== Number(this.idReservaAEditar) 
       );

@@ -7,7 +7,7 @@
         
         <nav class="main-nav">
             <a href="#" class="nav-link active" data-vista="plano"><i class="fas fa-map-marker-alt"></i> Plano</a>
-            <a href="#" class="nav-link" data-vista="analitica"><i class="fas fa-chart-line"></i> Analítica</a>
+            <a href="#" class="nav-link" data-vista="analitica"><i class="fas fa-chart-line"></i> Analitica</a>
         </nav>
         
         <div class="sidebar-content-wrapper">
@@ -51,19 +51,19 @@
                 <div class="fusion-choice-header">
                     <div>
                         <span class="fusion-choice-icon"><i class="fas fa-link"></i></span>
-                        <h2 id="fusion-title">¿Cómo deseas fusionar las mesas?</h2>
+                        <h2 id="fusion-title">Como deseas fusionar las mesas?</h2>
                     </div>
                     <button id="btn-cancelar-tipo-fusion" class="modal-close-btn" aria-label="Cerrar">&times;</button>
                 </div>
-                <p>Elige el alcance de esta fusión. Las reservas del día no se modificarán.</p>
+                <p>Elige el alcance de esta fusion. Las reservas del dia no se modificaran.</p>
                 <div class="fusion-choice-actions">
                     <button id="btn-fusion-temporal" class="fusion-choice-button temporal">
                         <i class="far fa-calendar"></i>
-                        <span><strong>Solo hoy</strong><small>Se aplica únicamente a la fecha seleccionada.</small></span>
+                        <span><strong>Solo hoy</strong><small>Se aplica unicamente a la fecha seleccionada.</small></span>
                     </button>
                     <button id="btn-fusion-permanente" class="fusion-choice-button permanente">
                         <i class="fas fa-calendar-check"></i>
-                        <span><strong>Permanente</strong><small>Se aplicará desde hoy en los días siguientes.</small></span>
+                        <span><strong>Permanente</strong><small>Se aplicara desde hoy en los dias siguientes.</small></span>
                     </button>
                 </div>
             </div>
@@ -72,18 +72,18 @@
         <!-- BARRA DE HERRAMIENTAS DEL EDITOR DE PLANO -->
         <div id="toolbar-editor" class="editor-toolbar-container oculto">
             <div class="editor-left">
-                <span class="editor-badge"><i class="fas fa-tools"></i> MODO EDICIÓN ROSA</span>
+                <span class="editor-badge"><i class="fas fa-tools"></i> MODO EDICION ROSA</span>
                 <small class="editor-hint">Arrastra las mesas para moverlas de lugar</small>
             </div>
             <div class="editor-actions">
                 <button id="btn-add-mesa" class="btn-editor-action"><i class="fas fa-plus"></i> Agregar Mesa</button>
                 <button id="btn-combinar-mesas" class="btn-editor-action"><i class="fas fa-link"></i> Fusionar Mesas</button>
-                <button id="btn-save-diseno" class="btn-editor-action btn-save"><i class="fas fa-check"></i> Guardar Distribución</button>
+                <button id="btn-save-diseno" class="btn-editor-action btn-save"><i class="fas fa-check"></i> Guardar Distribucion</button>
                 <button id="btn-cancel-edicion" class="btn-editor-action btn-cancel"><i class="fas fa-times"></i> Cancelar</button>
             </div>
         </div>
 
-        <!-- VISTA DE PLANO ROSA MEXICANO (4 ZONAS: Terraza, Piso, Jardín, Cava) -->
+        <!-- VISTA DE PLANO ROSA MEXICANO (4 ZONAS: Terraza, Piso, Jardin, Cava) -->
         <div id="vista-plano" class="vista">
             <div class="main-header">
                 <div class="header-left">
@@ -98,7 +98,7 @@
                 <div class="zonas-nav">
                     <button data-zona="Terraza" class="zona-btn active">Terraza</button>
                     <button data-zona="Piso" class="zona-btn">Piso</button>
-                    <button data-zona="Jardín" class="zona-btn">Jardín</button>
+                    <button data-zona="Jardín" class="zona-btn">Jardin</button>
                     <button data-zona="Cava" class="zona-btn">Cava</button>
                     <span class="nav-divider"></span>
                     <button id="btn-editar-plano" class="btn-editar"><i class="fas fa-tools"></i> Editar</button>
@@ -111,8 +111,8 @@
                 <div class="data-card"><div class="stat-info"><label class="data-label">Reservadas</label><span id="stats-reservadas" class="data-value">0</span></div></div>
                 <div class="data-card"><div class="stat-info"><label class="data-label">Libres</label><span id="stats-libres" class="data-value">0</span></div></div>
                 <div class="data-card pax-total"><div class="stat-info"><label class="data-label">Total Comensales</label><span id="stats-pax-total" class="data-value">0</span></div></div>
-                <div class="data-card total-bookings"><div class="stat-info"><label class="data-label">Total Reservas</label><span id="stats-totales-dia" class="data-value">0</span></div></div>
-                <div class="data-card"><div class="stat-info"><label class="data-label">% Ocupación</label><span id="stats-porcentaje-ocupacion" class="data-value">0%</span></div></div>
+                <div class="data-card total-bookings"><div class="stat-info"><label class="data-label">Total de Mesas</label><span id="stats-totales-dia" class="data-value">0</span></div></div>
+                <div class="data-card"><div class="stat-info"><label class="data-label">% Ocupacion</label><span id="stats-porcentaje-ocupacion" class="data-value">0%</span></div></div>
             </div>
 
             <!-- Plano fisico del restaurante -->
@@ -123,11 +123,11 @@
         <div id="vista-analitica" class="vista oculto">
             <div class="main-header">
                 <div class="header-left">
-                    <h1 class="page-title">Reporte & Analítica - Rosa Mexicano</h1>
+                    <h1 class="page-title">Reporte & Analitica - Rosa Mexicano</h1>
                 </div>
                 <!-- SELECTOR DE TURNOS -->
                 <div class="analytics-shift-filters">
-                    <button class="shift-btn active" data-shift="todo"><i class="fas fa-calendar-day"></i> Todo el Día</button>
+                    <button class="shift-btn active" data-shift="todo"><i class="fas fa-calendar-day"></i> Todo el Dia</button>
                     <button class="shift-btn" data-shift="comida"><i class="fas fa-sun"></i> Comida (13:00 - 18:00)</button>
                     <button class="shift-btn" data-shift="cena"><i class="fas fa-moon"></i> Cena (18:00 - 23:00)</button>
                 </div>
@@ -194,7 +194,7 @@
                 <div class="kpi-card dark">
                     <div class="kpi-icon"><i class="fas fa-sync"></i></div>
                     <div class="kpi-data">
-                        <span class="kpi-label">Rotación de Mesas</span>
+                        <span class="kpi-label">Rotacion de Mesas</span>
                         <strong id="kpi-rotacion-mesas" class="kpi-val">0.0x</strong>
                     </div>
                 </div>
@@ -215,8 +215,8 @@
                 <!-- GRAFICA 2: DEMANDA POR ZONAS -->
                 <div class="analytics-card">
                     <div class="card-header-flex">
-                        <h3><i class="fas fa-chart-pie"></i> Ocupación por Zona</h3>
-                        <button id="btn-toggle-chart" class="btn-small" title="Cambiar tipo de gráfica"><i class="fas fa-sync-alt"></i></button>
+                        <h3><i class="fas fa-chart-pie"></i> Ocupacion por Zona</h3>
+                        <button id="btn-toggle-chart" class="btn-small" title="Cambiar tipo de grafica"><i class="fas fa-sync-alt"></i></button>
                     </div>
                     <div class="chart-container">
                         <canvas id="grafica-zonas"></canvas>
@@ -317,7 +317,7 @@
                     <div class="form-group"><label>PERSONAS</label><input type="number" id="res-personas" min="1" value="2" required /></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group"><label>TELÉFONO</label><input type="tel" id="res-telefono" placeholder="Solo números" oninput="this.value = this.value.replace(/[^0-9]/g, '')" /></div>
+                    <div class="form-group"><label>TELEFONO</label><input type="tel" id="res-telefono" placeholder="Solo numeros" oninput="this.value = this.value.replace(/[^0-9]/g, '')" /></div>
                     <div class="form-group"><label>EMAIL</label><input type="email" id="res-email" placeholder="Opcional" /></div>
                 </div>
                 <div class="form-group" style="margin-bottom: 20px;">
@@ -354,7 +354,7 @@
 <!-- MODAL: LISTA DE MESAS -->
 <div id="modal-lista-mesa" class="modal-overlay oculto">
     <div class="modal-content">
-        <div class="modal-header"><h2>Múltiples Reservas - Rosa Mexicano</h2><button id="lista-mesa-close-btn" class="modal-close-btn">&times;</button></div>
+        <div class="modal-header"><h2>Multiples Reservas - Rosa Mexicano</h2><button id="lista-mesa-close-btn" class="modal-close-btn">&times;</button></div>
         <div class="modal-body">
             <p style="color:#aaa;">Selecciona una reserva:</p>
             <div id="lista-conflictos" class="lista-conflictos"></div>
@@ -366,10 +366,10 @@
 <div id="modal-walkin" class="modal-overlay oculto">
     <div class="modal-content" style="max-width: 320px; text-align: center; padding: 30px;">
         <div class="modal-header" style="justify-content: center; border-bottom: none; margin-bottom: 10px; padding-bottom: 0;">
-            <h2 style="font-size: 22px;">Walk-in Rápido</h2>
+            <h2 style="font-size: 22px;">Walk-in Rapido</h2>
         </div>
         <div class="modal-body">
-            <p style="color: var(--text-sec); font-size: 13px; margin-bottom: 15px; font-weight: bold; text-transform: uppercase;">¿Número de personas?</p>
+            <p style="color: var(--text-sec); font-size: 13px; margin-bottom: 15px; font-weight: bold; text-transform: uppercase;">Numero de personas?</p>
             <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 25px;">
                 <button type="button" id="btn-minus-walkin" style="width: 45px; height: 45px; border-radius: 8px; border: 2px solid var(--accent); background: var(--bg-sec); color: var(--accent); font-size: 24px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center;">-</button>
                 <input type="number" id="input-pax-walkin" value="2" min="1" style="width: 70px; text-align: center; font-size: 28px; font-weight: bold; border: none; border-bottom: 3px solid var(--accent); color: var(--bg-sidebar); outline: none; background: transparent; padding: 0;">
