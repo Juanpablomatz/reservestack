@@ -2,7 +2,7 @@
   <div class="contenedor-centrado">
     <div class="form-container">
       
-      <!-- Logo -->
+      <!-- Logo Rosa Mexicano -->
       <div class="logo-container">
         <img src="assets/imgrosamx.jpg" alt="Logo Rosa Mexicano" class="logo-img">
       </div>
@@ -17,46 +17,46 @@
             <label class="label-texto">Fecha de visita</label>
             <div class="input-wrapper">
               <ion-icon name="calendar-outline" class="icono-input"></ion-icon>
-              <ion-input type="date" [min]="todayDate" [(ngModel)]="fecha" class="input-limpio"></ion-input>
+              <ion-input type="date" [min]="todayDate" [(ngModel)]="fecha" (ionChange)="alCambiarFechaOHora()" class="input-limpio"></ion-input>
             </div>
           </div>
           <div class="column-input">
             <label class="label-texto">Hora</label>
             <div class="input-wrapper">
               <ion-icon name="time-outline" class="icono-input"></ion-icon>
-              <ion-input type="time" [(ngModel)]="hora" class="input-limpio"></ion-input>
+              <ion-input type="time" [(ngModel)]="hora" (ionChange)="alCambiarFechaOHora()" class="input-limpio"></ion-input>
             </div>
           </div>
         </div>
 
         <!-- Personas -->
-        <label class="label-texto">Número de Personas</label>
+        <label class="label-texto">Numero de Personas</label>
         <div class="input-wrapper">
           <ion-icon name="people-outline" class="icono-input"></ion-icon>
-          <ion-input type="number" min="1" [(ngModel)]="personas" placeholder="Ej. 4 personas" class="input-limpio"></ion-input>
+          <ion-input type="number" min="1" max="50" [(ngModel)]="personas" (ionChange)="alCambiarPersonas()" placeholder="Ej. 4 personas" class="input-limpio"></ion-input>
         </div>
 
         <!-- Aviso dinamico para grupos de 15 o mas personas -->
         <div *ngIf="personas >= 15" class="aviso-grupo-box" style="margin-top: 12px; padding: 14px; background: rgba(229, 0, 126, 0.08); border-left: 4px solid #e5007e; border-radius: 6px;">
-          <h4 style="margin: 0 0 6px 0; font-size: 14px; font-weight: bold; color: #e5007e;">Reservación para grupos grandes</h4>
+          <h4 style="margin: 0 0 6px 0; font-size: 14px; font-weight: bold; color: #e5007e;">Reservacion para grupos grandes</h4>
           <p style="margin: 0 0 12px 0; font-size: 12.5px; color: #ffffff; line-height: 1.4;">
-            Para reservaciones de 15 personas o más, te invitamos a comunicarte directamente con recepción para coordinar el acomodo de mesas a tu gusto y brindarte una atención personalizada.
+            Para reservaciones de 15 personas o mas, te invitamos a comunicarte directamente con recepcion para coordinar el acomodo de mesas y brindarte atencion personalizada.
           </p>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <a [href]="enlaceLlamada" style="flex: 1; min-width: 130px; text-decoration: none; background: #2c3e50; color: #ffffff; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px;">
               <ion-icon name="call-outline"></ion-icon> Llamar {{ TEL_MOSTRADO }}
             </a>
             <a [href]="enlaceWhatsapp" target="_blank" style="flex: 1; min-width: 130px; text-decoration: none; background: #25d366; color: #ffffff; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px;">
-              <ion-icon name="logo-whatsapp"></ion-icon> WhatsApp Recepción
+              <ion-icon name="logo-whatsapp"></ion-icon> WhatsApp Recepcion
             </a>
           </div>
         </div>
         
-        <!-- Área de Preferencia -->
-        <label class="label-texto" style="margin-top: 12px;">Área de Preferencia</label>
+        <!-- Area de Preferencia -->
+        <label class="label-texto" style="margin-top: 12px;">Area de Preferencia</label>
         <div class="input-wrapper">
           <ion-icon name="restaurant-outline" class="icono-input"></ion-icon>
-          <ion-select [(ngModel)]="zona" placeholder="Selecciona el área..." class="input-limpio" interface="popover">
+          <ion-select [(ngModel)]="zona" placeholder="Selecciona el area..." class="input-limpio" interface="popover">
             <ion-select-option *ngFor="let z of zonasDisponibles" [value]="z">{{ z }}</ion-select-option>
           </ion-select>
         </div>
@@ -76,34 +76,34 @@
             <label class="label-texto">Apellido</label>
             <div class="input-wrapper">
               <ion-icon name="person-outline" class="icono-input"></ion-icon>
-              <ion-input type="text" [(ngModel)]="apellido" placeholder="Ej. Pérez" class="input-limpio"></ion-input>
+              <ion-input type="text" [(ngModel)]="apellido" placeholder="Ej. Perez" class="input-limpio"></ion-input>
             </div>
           </div>
         </div>
 
-        <!-- Teléfono -->
-        <label class="label-texto">Número de Teléfono</label>
+        <!-- Telefono -->
+        <label class="label-texto">Numero de Telefono</label>
         <div class="input-wrapper">
           <ion-icon name="call-outline" class="icono-input"></ion-icon>
-          <ion-input type="tel" [(ngModel)]="telefono" (ionInput)="limpiarTelefono($event)" placeholder="Ej. 44334534" class="input-limpio"></ion-input>
+          <ion-input type="tel" [(ngModel)]="telefono" (ionInput)="limpiarTelefono($event)" maxlength="10" placeholder="Ej. 4433453412 (10 digitos)" class="input-limpio"></ion-input>
         </div>
 
         <!-- Email -->
-        <label class="label-texto">Correo Electrónico</label>
+        <label class="label-texto">Correo Electronico</label>
         <div class="input-wrapper">
           <ion-icon name="mail-outline" class="icono-input"></ion-icon>
-          <ion-input type="email" [(ngModel)]="email" placeholder="Ej. correo@gmail.com" class="input-limpio"></ion-input>
+          <ion-input type="email" [(ngModel)]="email" placeholder="Ej. cliente@gmail.com" class="input-limpio"></ion-input>
         </div>
 
         <!-- Notas Especiales -->
         <label class="label-texto">Notas Especiales</label>
         <div class="input-wrapper textarea-wrapper">
           <ion-icon name="document-text-outline" class="icono-input"></ion-icon>
-          <ion-textarea [(ngModel)]="nota" placeholder="Ej. Alergias, cumpleaños..." class="input-limpio"></ion-textarea>
+          <ion-textarea [(ngModel)]="nota" placeholder="Ej. Alergias, celebracion de aniversario..." class="input-limpio"></ion-textarea>
         </div>
       </div>
       
-      <!-- Footer: Botón automático si son menos de 15, o aviso directo si son 15+ -->
+      <!-- Footer -->
       <div class="form-footer">
         <ion-button 
           *ngIf="personas < 15"
@@ -112,13 +112,13 @@
           [disabled]="cargando" 
           (click)="confirmarReservacion()">
           <ion-spinner *ngIf="cargando" name="crescent" style="margin-right: 8px; color: white;"></ion-spinner>
-          <span *ngIf="!cargando">CONFIRMAR RESERVACIÓN</span>
-          <span *ngIf="cargando">PROCESANDO RESERVACIÓN...</span>
+          <span *ngIf="!cargando">CONFIRMAR RESERVACION</span>
+          <span *ngIf="cargando">PROCESANDO RESERVACION...</span>
         </ion-button>
 
         <div *ngIf="personas >= 15" style="text-align: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
           <p style="margin: 0; font-size: 13px; color: #ffffff;">
-            Para confirmar este grupo, utiliza los botones de <strong>Llamada</strong> o <strong>WhatsApp</strong> de arriba.
+            Para confirmar este grupo grande, utiliza los botones de <strong>Llamada</strong> o <strong>WhatsApp</strong> de arriba.
           </p>
         </div>
       </div>

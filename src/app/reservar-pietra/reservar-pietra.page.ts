@@ -66,7 +66,7 @@ export class ReservarPietraPage implements OnInit {
   // Zonas oficiales de Pietra Cucina
   zonasDisponibles: string[] = ['Terraza', 'Nivel bajo', 'Nivel medio', 'Pared lloron'];
 
-  // Distribución de respaldo de Pietra Cucina
+  // Distribucion de respaldo de Pietra Cucina
   restauranteLayout: any = {
     'Terraza': [{id:100,c:4},{id:101,c:4},{id:102,c:4},{id:103,c:4},{id:104,c:4},{id:105,c:4},{id:106,c:4}],
     'Nivel bajo': [{id:90,c:4},{id:91,c:4},{id:92,c:4}],
@@ -110,18 +110,31 @@ export class ReservarPietraPage implements OnInit {
 
   calcularFechaMinimaLocal() {
     const localDate = new Date();
-    const offset = localDate.getTimezoneOffset();
-    const adjustedDate = new Date(localDate.getTime() - (offset * 60 * 1000));
-    this.todayDate = adjustedDate.toISOString().split('T')[0];
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, '0');
+    const day = String(localDate.getDate()).padStart(2, '0');
+    this.todayDate = `${year}-${month}-${day}`;
     this.fecha = this.todayDate;
     this.hora = '15:00';
+  }
+
+  alCambiarFechaOHora() {
+    if (this.fecha < this.todayDate) {
+      this.fecha = this.todayDate;
+    }
+  }
+
+  alCambiarPersonas() {
+    if (this.personas < 1) this.personas = 1;
+    if (this.personas > 50) this.personas = 50;
   }
 
   limpiarTelefono(event: any) {
     const input = event.target;
     if (input) {
-      let value = input.value;
+      let value = input.value || '';
       value = value.replace(/[^0-9]/g, '');
+      if (value.length > 10) value = value.substring(0, 10);
       input.value = value;
       this.telefono = value;
     }
@@ -129,19 +142,26 @@ export class ReservarPietraPage implements OnInit {
 
   async cargarDisenoMesas() {
     try {
-      const resp = await fetch(`${this.BASE_URL}/api/pietra/diseno`);
-      const data = await resp.json();
-      
-      const tieneMesas = Object.values(data).some((arr: any) => arr && arr.length > 0);
-      if (tieneMesas) {
-        this.restauranteLayout = data;
-        this.zonasDisponibles = Object.keys(data);
-        if (!this.zonasDisponibles.includes(this.zona) && this.zonasDisponibles.length > 0) {
-          this.zona = this.zonasDisponibles[0];
+      const resp = await fetch(`${this.BASE_URL}/api/restaurantes/1/diseno`);
+      if (resp.ok) {
+        const data = await resp.json();
+        const tieneMesas = data && typeof data === 'object' && Object.values(data).some((arr: any) => Array.isArray(arr) && arr.length > 0);
+        if (tieneMesas) {
+          this.restauranteLayout = data;
+          this.zonasDisponibles = Object.keys(data);
+          if (!this.zonasDisponibles.includes(this.zona) && this.zonasDisponibles.length > 0) {
+            this.zona = this.zonasDisponibles[0];
+          }
+          return;
         }
       }
     } catch (e) {
       console.warn('Usando distribucion de mesas de Pietra Cucina de respaldo.');
+    }
+
+    this.zonasDisponibles = ['Terraza', 'Nivel bajo', 'Nivel medio', 'Pared lloron'];
+    if (!this.zonasDisponibles.includes(this.zona)) {
+      this.zona = 'Terraza';
     }
   }
 
@@ -154,14 +174,14 @@ export class ReservarPietraPage implements OnInit {
     const fechaObj = new Date(year, month - 1, day);
     const diaSemana = fechaObj.getDay(); 
 
-    let horaApertura = '13:00';
-    let horaCierre = '23:00';
+    const horaApertura = '13:00';
+    const horaCierre = '23:00';
 
     if (horaStr < horaApertura || horaStr > horaCierre) {
-      const nomDia = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][diaSemana];
+      const nomDia = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'][diaSemana];
       return { 
         valido: false, 
-        mensaje: `Nuestro horario de atención los ${nomDia}s en Pietra Cucina es de ${horaApertura} a ${horaCierre} hs.` 
+        mensaje: `Nuestro horario de atencion los ${nomDia}s en Pietra Cucina es de ${horaApertura} a ${horaCierre} hs.` 
       };
     }
 
@@ -176,34 +196,57 @@ export class ReservarPietraPage implements OnInit {
     return { valido: true, mensaje: '' };
   }
 
-  async buscarMesaDisponible(personasRequeridas: number): Promise<number> {
+  async buscarMesaDisponible(personasRequeridas: number): Promise<any> {
     try {
-      const resp = await fetch(`${this.BASE_URL}/api/pietra/reservas`);
-      const todasLasReservas = await resp.json();
+      const resp = await fetch(`${this.BASE_URL}/api/restaurantes/1/reservas`);
+      let todasLasReservas: any[] = [];
+      if (resp.ok) {
+        todasLasReservas = await resp.json();
+      }
 
-      // 1. Filtrar reservaciones activas para el dia seleccionado
-      const ocupadasHoy = todasLasReservas.filter((r: any) => 
-        r.fecha === this.fecha && 
-        r.estado !== 'finalizada' && 
-        r.estado !== 'cancelada' && 
-        r.estado !== 'liberada'
-      );
-      const idsMesasOcupadas = ocupadasHoy.map((r: any) => r.idMesa.toString());
+      const [hE, mE] = this.hora.split(':').map(Number);
+      const minsElegidos = (hE * 60) + mE;
+
+      // 1. Filtrar reservaciones que choquen en la misma fecha y ventana de 90 minutos
+      const ocupadasOEnConflicto = todasLasReservas.filter((r: any) => {
+        if (!r.fecha || r.fecha !== this.fecha) return false;
+        if (r.estado === 'finalizada' || r.estado === 'cancelada' || r.estado === 'liberada') return false;
+        
+        // Bloqueo total de la mesa en la fecha
+        if (r.estado === 'bloqueada') return true;
+
+        if (r.hora) {
+          const [hR, mR] = r.hora.split(':').map(Number);
+          const minsR = (hR * 60) + mR;
+          return Math.abs(minsElegidos - minsR) < 90;
+        }
+
+        return true;
+      });
+
+      const idsMesasNoDisponibles = ocupadasOEnConflicto.map((r: any) => r.idMesa ? r.idMesa.toString().trim().toLowerCase() : '');
 
       const mesasDeZona = this.restauranteLayout[this.zona] || [];
 
       // 2. Verificar ocupacion considerando mesas simples y fusionadas
       const mesaEstaOcupada = (m: any) => {
-        const mIdStr = m.id.toString();
-        if (idsMesasOcupadas.includes(mIdStr)) return true;
-        if (m.displayId && idsMesasOcupadas.includes(m.displayId.toString())) return true;
+        if (!m || m.id === undefined) return true;
+        const mIdStr = m.id.toString().trim().toLowerCase();
+        const displayStr = m.displayId ? m.displayId.toString().trim().toLowerCase() : '';
+
+        if (idsMesasNoDisponibles.includes(mIdStr) || (displayStr && idsMesasNoDisponibles.includes(displayStr))) {
+          return true;
+        }
+
         if (m.isMerged) {
-          if (m.displayId) {
-            const subIds = m.displayId.split('+').map((s: string) => s.trim());
-            if (subIds.some((s: string) => idsMesasOcupadas.includes(s))) return true;
+          if (displayStr && displayStr.includes('+')) {
+            const subIds = displayStr.split('+').map((s: string) => s.trim().toLowerCase());
+            if (subIds.some((s: string) => idsMesasNoDisponibles.includes(s))) return true;
           }
           if (m.originalTables && Array.isArray(m.originalTables)) {
-            if (m.originalTables.some((orig: any) => idsMesasOcupadas.includes(orig.id.toString()))) return true;
+            if (m.originalTables.some((orig: any) => orig.id && idsMesasNoDisponibles.includes(orig.id.toString().toLowerCase()))) {
+              return true;
+            }
           }
         }
         return false;
@@ -231,11 +274,11 @@ export class ReservarPietraPage implements OnInit {
             return 0;
           });
 
-          return candidatas[0].id;
+          return candidatas[0].displayId || candidatas[0].id;
         }
 
         mesasLibres.sort((a: any, b: any) => Number(b.c) - Number(a.c));
-        return mesasLibres[0].id;
+        return mesasLibres[0].displayId || mesasLibres[0].id;
       }
 
     } catch (error) {
@@ -243,16 +286,15 @@ export class ReservarPietraPage implements OnInit {
     }
 
     const mesasRespaldo = this.restauranteLayout[this.zona] || [];
-    return mesasRespaldo.length > 0 ? mesasRespaldo[0].id : 100;
+    return mesasRespaldo.length > 0 ? (mesasRespaldo[0].displayId || mesasRespaldo[0].id) : '100';
   }
 
   async confirmarReservacion() {
-    // Guardia de seguridad: evita multiples envios simultaneos
     if (this.cargando) return;
 
     const regexTexto = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
     const regexEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-    const regexTel = /^[0-9]+$/;
+    const regexTel = /^[0-9]{10}$/;
 
     if (!this.nombre.trim() || !this.apellido.trim() || !this.fecha || !this.hora) {
       alert('Por favor, completa los campos requeridos: Fecha, Hora, Nombre y Apellido.');
@@ -272,23 +314,23 @@ export class ReservarPietraPage implements OnInit {
 
     const pax = Number(this.personas);
     if (isNaN(pax) || pax < 1) {
-      alert('El número de personas debe ser como mínimo 1.');
+      alert('El numero de personas debe ser como minimo 1.');
       return;
     }
 
     // Bloqueo estricto para grupos de 15 o mas
     if (pax >= 15) {
-      alert(`Para reservaciones de 15 personas o más, por favor comunícate directamente con recepción al ${this.TEL_MOSTRADO} para coordinar el acomodo de mesas.`);
+      alert(`Para reservaciones de 15 personas o mas, por favor comunicate directamente con recepcion al ${this.TEL_MOSTRADO}.`);
       return;
     }
 
-    if (this.telefono.trim() && (!regexTel.test(this.telefono) || this.telefono.length < 8 || this.telefono.length > 15)) {
-      alert('El número de teléfono debe contener únicamente dígitos numéricos.');
+    if (this.telefono.trim() && !regexTel.test(this.telefono.trim())) {
+      alert('El numero de telefono debe tener exactamente 10 digitos numericos.');
       return;
     }
 
-    if (this.email.trim() && !regexEmail.test(this.email)) {
-      alert('Por favor, ingresa un correo electrónico válido.');
+    if (this.email.trim() && !regexEmail.test(this.email.trim())) {
+      alert('Por favor, ingresa un correo electronico valido.');
       return;
     }
 
@@ -299,23 +341,20 @@ export class ReservarPietraPage implements OnInit {
       const nombreCompleto = `${this.nombre.trim()} ${this.apellido.trim()}`;
 
       const nuevaReserva = {
-        id: Date.now(), 
+        id: Date.now().toString(), 
         idRestaurante: 1, // Pietra Cucina
         fecha: this.fecha,
         hora: this.hora,
-        zona: this.zona,
-        idMesa: idMesaAsignada.toString(),
+        zona: this.zona || 'Terraza',
+        idMesa: idMesaAsignada ? idMesaAsignada.toString() : '100',
         nombre: nombreCompleto,
-        personas: pax.toString(),
+        personas: pax,
         telefono: this.telefono.trim() || null,
         email: this.email.trim() || null,
-        nota: this.nota.trim() || null,
-        estado: 'reservada',
-        isNewRecord: true,
-        tipoCorreo: 'crear'
+        nota: this.nota.trim() || null
       };
 
-      const response = await fetch(`${this.BASE_URL}/api/pietra/reservas`, {
+      const response = await fetch(`${this.BASE_URL}/api/publico/reservas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevaReserva)
@@ -323,16 +362,15 @@ export class ReservarPietraPage implements OnInit {
       const data = await response.json();
 
       if (data.success || response.ok) {
-        alert(`¡Reserva confirmada con éxito en Pietra Cucina!\nTe hemos asignado la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmación enviada a: ${this.email || 'tu correo'}`);
+        alert(`Reserva confirmada con exito en Pietra Cucina.\nTe hemos asignado la Mesa ${nuevaReserva.idMesa} en la zona ${this.zona.toUpperCase()}.\nConfirmacion enviada a: ${this.email || 'tu correo registrado'}`);
         this.limpiarFormulario();
       } else {
-        alert('Error al procesar tu registro. Por favor vuelve a intentarlo.');
+        alert(data.message || 'Error al procesar tu registro. Por favor vuelve a intentarlo.');
       }
     } catch (e) {
       console.error('Error al enviar la reserva:', e);
-      alert('No se pudo conectar al servidor de reservas.');
+      alert('No se pudo conectar al servidor de reservas. Por favor intenta en un momento.');
     } finally {
-      // Se garantiza el desbloqueo del boton
       this.cargando = false;
     }
   }
@@ -344,7 +382,7 @@ export class ReservarPietraPage implements OnInit {
     this.telefono = '';
     this.email = '';
     this.nota = '';
-    this.hora = '';
+    this.hora = '15:00';
     this.fecha = this.todayDate;
   }
 }
