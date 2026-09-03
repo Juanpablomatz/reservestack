@@ -35,7 +35,7 @@ import {
 export class ReservarLloronaPage implements OnInit {
 
   fecha: string = '';
-  hora: string = '';
+  hora: string = '16:00';
   zona: string = 'Piso';
   nombre: string = '';
   apellido: string = ''; 
@@ -47,7 +47,7 @@ export class ReservarLloronaPage implements OnInit {
   todayDate: string = '';
   cargando: boolean = false;
 
-  // Datos de contacto oficial para grupos grandes
+  // Contacto oficial para eventos y grupos grandes
   readonly TEL_RECEPCION: string = '4493937923';
   readonly TEL_MOSTRADO: string = '449 393 79 23';
 
@@ -84,7 +84,6 @@ export class ReservarLloronaPage implements OnInit {
     await this.cargarDisenoMesas();
   }
 
-  // Generadores dinamicos de enlaces para contacto de grupos
   get enlaceLlamada(): string {
     return `tel:${this.TEL_RECEPCION}`;
   }
@@ -97,12 +96,35 @@ export class ReservarLloronaPage implements OnInit {
   }
 
   calcularFechaMinimaLocal() {
-    const localDate = new Date();
-    const offset = localDate.getTimezoneOffset();
-    const adjustedDate = new Date(localDate.getTime() - (offset * 60 * 1000));
-    this.todayDate = adjustedDate.toISOString().split('T')[0];
-    this.fecha = this.todayDate;
-    this.hora = '16:00';
+    const hoy = new Date();
+    const year = hoy.getFullYear();
+    const month = String(hoy.getMonth() + 1).padStart(2, '0');
+    const day = String(hoy.getDate()).padStart(2, '0');
+    this.todayDate = `${year}-${month}-${day}`;
+    if (!this.fecha) {
+      this.fecha = this.todayDate;
+    }
+  }
+
+  normalizarHora(horaStr: string): string {
+    if (!horaStr) return '16:00';
+    const str = horaStr.toString().trim();
+    const match12 = str.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm|a\.\s*m\.|p\.\s*m\.)?$/i);
+    if (match12 && match12[4]) {
+      let h = parseInt(match12[1], 10);
+      const m = match12[2];
+      const period = match12[4].toLowerCase().replace(/\./g, '').trim();
+      if (period === 'pm' && h < 12) h += 12;
+      if (period === 'am' && h === 12) h = 0;
+      return `${String(h).padStart(2, '0')}:${m}`;
+    }
+    const parts = str.split(':');
+    if (parts.length >= 2) {
+      const h = String(parseInt(parts[0], 10) || 0).padStart(2, '0');
+      const m = String(parseInt(parts[1], 10) || 0).padStart(2, '0');
+      return `${h}:${m}`;
+    }
+    return '16:00';
   }
 
   limpiarTelefono(event: any) {
@@ -110,6 +132,7 @@ export class ReservarLloronaPage implements OnInit {
     if (input) {
       let value = input.value;
       value = value.replace(/[^0-9]/g, '');
+      if (value.length > 10) value = value.substring(0, 10);
       input.value = value;
       this.telefono = value;
     }
@@ -118,14 +141,15 @@ export class ReservarLloronaPage implements OnInit {
   async cargarDisenoMesas() {
     try {
       const resp = await fetch(`${this.BASE_URL}/api/restaurantes/3/diseno`);
-      const data = await resp.json();
-      
-      const tieneMesas = Object.values(data).some((arr: any) => arr && arr.length > 0);
-      if (tieneMesas) {
-        this.restauranteLayout = data;
-        this.zonasDisponibles = Object.keys(data);
-        if (!this.zonasDisponibles.includes(this.zona) && this.zonasDisponibles.length > 0) {
-          this.zona = this.zonasDisponibles[0];
+      if (resp.ok) {
+        const data = await resp.json();
+        const tieneMesas = Object.values(data).some((arr: any) => Array.isArray(arr) && arr.length > 0);
+        if (tieneMesas) {
+          this.restauranteLayout = data;
+          this.zonasDisponibles = Object.keys(data);
+          if (!this.zonasDisponibles.includes(this.zona) && this.zonasDisponibles.length > 0) {
+            this.zona = this.zonasDisponibles[0];
+          }
         }
       }
     } catch (e) {
@@ -133,98 +157,123 @@ export class ReservarLloronaPage implements OnInit {
     }
   }
 
-  // Validacion de horarios y dias de servicio
   validarHorarioServicio(fechaStr: string, horaStr: string): { valido: boolean; mensaje: string } {
     if (!fechaStr || !horaStr) {
       return { valido: false, mensaje: 'Por favor selecciona fecha y hora.' };
     }
 
+    const horaNorm = this.normalizarHora(horaStr);
     const [year, month, day] = fechaStr.split('-').map(Number);
     const fechaObj = new Date(year, month - 1, day);
-    const diaSemana = fechaObj.getDay(); // 0: Domingo, 1: Lunes, ..., 6: Sabado
+    const diaSemana = fechaObj.getDay(); 
 
-    // 1. Dias cerrados en Llorona Comedor (Lunes y Martes)
     if (diaSemana === 1 || diaSemana === 2) {
       const nomDia = diaSemana === 1 ? 'Lunes' : 'Martes';
       return { valido: false, mensaje: `Llorona Comedor se encuentra CERRADO los dias ${nomDia}.` };
     }
 
-    // 2. Horarios oficiales por dia en Llorona Comedor
     let horaApertura = '15:00';
     let horaCierre = '21:00';
 
-    if (diaSemana >= 3 && diaSemana <= 5) { // Miercoles a Viernes (3:00 PM - 9:00 PM)
+    if (diaSemana >= 3 && diaSemana <= 5) {
       horaApertura = '15:00'; 
       horaCierre = '21:00';
-    } else if (diaSemana === 6 || diaSemana === 0) { // Sabado y Domingo (2:00 PM - 10:00 PM)
+    } else if (diaSemana === 6 || diaSemana === 0) {
       horaApertura = '14:00'; 
       horaCierre = '22:00';
     }
 
-    if (horaStr < horaApertura || horaStr > horaCierre) {
+    if (horaNorm < horaApertura || horaNorm > horaCierre) {
       const nomDia = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'][diaSemana];
       return { 
         valido: false, 
-        mensaje: `Nuestro horario de atencion los dias ${nomDia} en Llorona Comedor es de ${horaApertura} a ${horaCierre} hs. Por favor elige una hora dentro del servicio.` 
+        mensaje: `El horario de atencion los dias ${nomDia} en Llorona Comedor es de ${horaApertura} a ${horaCierre} hs.` 
       };
     }
 
-    // 3. Bloqueo de horas pasadas para la fecha de HOY
     if (fechaStr === this.todayDate) {
       const ahora = new Date();
       const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
-      if (horaStr <= horaActual) {
-        return { valido: false, mensaje: 'No puedes reservar para una hora que ya ha pasado hoy. Por favor elige una hora posterior.' };
+      if (horaNorm <= horaActual) {
+        return { valido: false, mensaje: 'No es posible reservar para una hora anterior a la actual.' };
       }
     }
 
     return { valido: true, mensaje: '' };
   }
 
-  async buscarMesaDisponible(personasRequeridas: number): Promise<number> {
+  async buscarMesaDisponible(personasRequeridas: number): Promise<string> {
     try {
       const resp = await fetch(`${this.BASE_URL}/api/restaurantes/3/reservas`);
       const todasLasReservas = await resp.json();
 
-      // 1. Filtrar reservaciones activas para el dia seleccionado
-      const ocupadasHoy = todasLasReservas.filter((r: any) => 
-        r.fecha === this.fecha && 
-        r.estado !== 'finalizada' && 
-        r.estado !== 'cancelada' && 
-        r.estado !== 'liberada'
-      );
-      const idsMesasOcupadas = ocupadasHoy.map((r: any) => r.idMesa.toString());
+      const horaSolicitada = this.normalizarHora(this.hora);
+      const [hS, mS] = horaSolicitada.split(':').map(Number);
+      const minsSolicitados = (hS * 60) + mS;
+
+      const reservasEnFecha = Array.isArray(todasLasReservas)
+        ? todasLasReservas.filter((r: any) => 
+            r.fecha === this.fecha && 
+            r.estado !== 'finalizada' && 
+            r.estado !== 'cancelada' && 
+            r.estado !== 'liberada'
+          )
+        : [];
+
+      const idsMesasNoDisponibles: string[] = [];
+
+      reservasEnFecha.forEach((r: any) => {
+        if (!r.idMesa) return;
+        const idMesaStr = r.idMesa.toString().trim().toLowerCase();
+
+        if (r.estado === 'bloqueada') {
+          idsMesasNoDisponibles.push(idMesaStr);
+          return;
+        }
+
+        if (r.hora) {
+          const horaRes = this.normalizarHora(r.hora);
+          const [hR, mR] = horaRes.split(':').map(Number);
+          const minsRes = (hR * 60) + mR;
+          
+          if (Math.abs(minsSolicitados - minsRes) < 90) {
+            idsMesasNoDisponibles.push(idMesaStr);
+          }
+        } else {
+          idsMesasNoDisponibles.push(idMesaStr);
+        }
+      });
 
       const mesasDeZona = this.restauranteLayout[this.zona] || [];
 
-      // 2. Verificar ocupacion considerando mesas simples y fusionadas
       const mesaEstaOcupada = (m: any) => {
-        const mIdStr = m.id.toString();
-        if (idsMesasOcupadas.includes(mIdStr)) return true;
-        if (m.displayId && idsMesasOcupadas.includes(m.displayId.toString())) return true;
+        const mIdStr = m.id ? m.id.toString().trim().toLowerCase() : '';
+        const mDispStr = m.displayId ? m.displayId.toString().trim().toLowerCase() : '';
+
+        if (idsMesasNoDisponibles.includes(mIdStr) || (mDispStr && idsMesasNoDisponibles.includes(mDispStr))) {
+          return true;
+        }
+
         if (m.isMerged) {
-          if (m.displayId) {
-            const subIds = m.displayId.split('+').map((s: string) => s.trim());
-            if (subIds.some((s: string) => idsMesasOcupadas.includes(s))) return true;
+          if (mDispStr && mDispStr.includes('+')) {
+            const subIds = mDispStr.split('+').map((s: string) => s.trim().toLowerCase());
+            if (subIds.some((s: string) => idsMesasNoDisponibles.includes(s))) return true;
           }
           if (m.originalTables && Array.isArray(m.originalTables)) {
-            if (m.originalTables.some((orig: any) => idsMesasOcupadas.includes(orig.id.toString()))) return true;
+            if (m.originalTables.some((orig: any) => idsMesasNoDisponibles.includes((orig.id || '').toString().toLowerCase()))) {
+              return true;
+            }
           }
         }
         return false;
       };
 
-      // 3. Obtener todas las mesas libres de la zona elegida
       const mesasLibres = mesasDeZona.filter((m: any) => !mesaEstaOcupada(m));
 
       if (mesasLibres.length > 0) {
-        // Filtrar mesas con capacidad suficiente para el grupo
         const candidatas = mesasLibres.filter((m: any) => Number(m.c) >= personasRequeridas);
 
         if (candidatas.length > 0) {
-          // Ordenar inteligentemente:
-          // a) Menor desperdicio de asientos primero (ajuste mas exacto)
-          // b) Mesas individuales antes que mesas fusionadas
           candidatas.sort((a: any, b: any) => {
             const desperdicioA = Number(a.c) - personasRequeridas;
             const desperdicioB = Number(b.c) - personasRequeridas;
@@ -239,12 +288,11 @@ export class ReservarLloronaPage implements OnInit {
             return 0;
           });
 
-          return candidatas[0].id;
+          return candidatas[0].displayId || candidatas[0].id.toString();
         }
 
-        // Si ninguna mesa alcanza la capacidad requerida, asignar la mesa libre con mayor capacidad
         mesasLibres.sort((a: any, b: any) => Number(b.c) - Number(a.c));
-        return mesasLibres[0].id;
+        return mesasLibres[0].displayId || mesasLibres[0].id.toString();
       }
 
     } catch (error) {
@@ -252,58 +300,54 @@ export class ReservarLloronaPage implements OnInit {
     }
 
     const mesasRespaldo = this.restauranteLayout[this.zona] || [];
-    return mesasRespaldo.length > 0 ? mesasRespaldo[0].id : 1;
+    if (mesasRespaldo.length > 0) {
+      return mesasRespaldo[0].displayId || mesasRespaldo[0].id.toString();
+    }
+    return '1';
   }
 
   async confirmarReservacion() {
-    // Guardia de seguridad: evita multiples envios simultaneos
     if (this.cargando) return;
 
     const regexTexto = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/;
-    const regexEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-    const regexTel = /^[0-9]+$/;
+    const regexEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const regexTel = /^[0-9]{10}$/;
 
-    // 1. Validaciones requeridas de existencia
     if (!this.nombre.trim() || !this.apellido.trim() || !this.fecha || !this.hora) {
-      alert('Por favor, completa los campos requeridos: Fecha, Hora, Nombre y Apellido.');
+      alert('Por favor completa los campos requeridos: Fecha, Hora, Nombre y Apellido.');
       return;
     }
 
-    // 2. Validacion estricta de Horarios Oficiales y Horas Pasadas
-    const checkHorario = this.validarHorarioServicio(this.fecha, this.hora);
+    const horaNormalizada = this.normalizarHora(this.hora);
+    const checkHorario = this.validarHorarioServicio(this.fecha, horaNormalizada);
     if (!checkHorario.valido) {
       alert(checkHorario.mensaje);
       return;
     }
 
-    // 3. Validacion de formato de texto
-    if (!regexTexto.test(this.nombre) || !regexTexto.test(this.apellido)) {
-      alert('Tu Nombre y Apellido solo deben contener letras.');
+    if (!regexTexto.test(this.nombre.trim()) || !regexTexto.test(this.apellido.trim())) {
+      alert('El Nombre y Apellido deben contener unicamente letras.');
       return;
     }
 
-    // 4. Validacion comensales
     const pax = Number(this.personas);
     if (isNaN(pax) || pax < 1) {
       alert('El numero de personas debe ser como minimo 1.');
       return;
     }
 
-    // Bloqueo estricto para grupos de 15 o mas
     if (pax >= 15) {
-      alert(`Para reservaciones de 15 personas o mas, por favor comunicate directamente con recepcion al ${this.TEL_MOSTRADO} para coordinar el acomodo de mesas.`);
+      alert(`Para reservaciones de 15 personas o mas, comunicate directamente con recepcion al ${this.TEL_MOSTRADO} para coordinar el acomodo de mesas.`);
       return;
     }
 
-    // 5. Validacion opcional de Telefono
-    if (this.telefono.trim() && (!regexTel.test(this.telefono) || this.telefono.length < 8 || this.telefono.length > 15)) {
-      alert('El numero de telefono debe contener unicamente digitos numericos (entre 8 y 15 numeros).');
+    if (this.telefono.trim() && !regexTel.test(this.telefono.trim())) {
+      alert('El numero de telefono debe contener exactamente 10 digitos numericos.');
       return;
     }
 
-    // 6. Validacion opcional de Email
-    if (this.email.trim() && !regexEmail.test(this.email)) {
-      alert('Por favor, ingresa una direccion de correo electronico valida (ejemplo@correo.com).');
+    if (this.email.trim() && !regexEmail.test(this.email.trim())) {
+      alert('Por favor ingresa una direccion de correo electronico valida.');
       return;
     }
 
@@ -313,39 +357,35 @@ export class ReservarLloronaPage implements OnInit {
       const idMesaAsignada = await this.buscarMesaDisponible(pax);
       const nombreCompleto = `${this.nombre.trim()} ${this.apellido.trim()}`;
 
-      const nuevaReserva = {
-        id: Date.now(), 
-        idRestaurante: 3, // Llorona Comedor
+      const payload = {
+        idRestaurante: 3,
         fecha: this.fecha,
-        hora: this.hora,
+        hora: horaNormalizada,
         zona: this.zona,
-        idMesa: idMesaAsignada.toString(),
+        idMesa: idMesaAsignada,
         nombre: nombreCompleto,
-        personas: pax.toString(),
+        personas: pax,
         telefono: this.telefono.trim() || null,
         email: this.email.trim() || null,
-        nota: this.nota.trim() || null,
-        estado: 'reservada',
-        isNewRecord: true,
-        tipoCorreo: 'crear'
+        nota: this.nota.trim() || null
       };
 
-      const response = await fetch(`${this.BASE_URL}/api/restaurantes/3/reservas`, {
+      const response = await fetch(`${this.BASE_URL}/api/publico/reservas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevaReserva)
+        body: JSON.stringify(payload)
       });
       const data = await response.json();
 
-      if (data.success || response.ok) {
-        alert(`¡Reserva en Llorona Comedor confirmada con exito!\nTe hemos asignado automaticamente la Mesa ${idMesaAsignada} en la zona ${this.zona.toUpperCase()}.\nConfirmacion enviada a: ${this.email || 'tu correo'}`);
+      if (response.ok && data.success) {
+        alert(`Reserva confirmada con exito en Llorona Comedor.\nMesa asignada: ${idMesaAsignada} (${this.zona.toUpperCase()}).\nSe envio el comprobante al correo: ${this.email || 'No proporcionado'}`);
         this.limpiarFormulario();
       } else {
-        alert('Error al procesar tu registro. Por favor vuelve a intentarlo.');
+        alert(data.message || 'Error al procesar tu registro. Por favor vuelve a intentarlo.');
       }
     } catch (e) {
       console.error('Error al enviar la reserva:', e);
-      alert('No se pudo conectar al servidor de reservas. Intentalo de nuevo mas tarde.');
+      alert('No se pudo conectar con el servidor de reservas.');
     } finally {
       this.cargando = false;
     }
@@ -358,7 +398,7 @@ export class ReservarLloronaPage implements OnInit {
     this.telefono = '';
     this.email = '';
     this.nota = '';
-    this.hora = '';
+    this.hora = '16:00';
     this.fecha = this.todayDate;
   }
 }

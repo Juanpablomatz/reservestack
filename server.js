@@ -12,10 +12,10 @@ const bcrypt = require('bcryptjs');
 const app = express();
 const server = http.createServer(app); 
 
-// Configuración de Proxy para Render
+// Configuracion de Proxy para Render
 app.set('trust proxy', 1);
 
-// 🛡️ 1. SEGURIDAD HTTP CON HELMET
+// 1. SEGURIDAD HTTP CON HELMET
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
@@ -23,7 +23,7 @@ app.use(helmet({
 const SECRET_KEY = process.env.JWT_SECRET || 'reservestack_jwt_secret_key_2026_prod';
 const PORT = process.env.PORT || 3000;
 
-// 🔒 2. SEGURIDAD CORS RESTRINGIDO A TUS DOMINIOS OFICIALES
+// 2. SEGURIDAD CORS RESTRINGIDO A DOMINIOS OFICIALES
 const ORIGENES_PERMITIDOS = [
   'https://reservestack.vercel.app',
   'http://localhost:8100',
@@ -36,7 +36,7 @@ app.use(cors({
     if (!origin || ORIGENES_PERMITIDOS.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Acceso no permitido por política de seguridad CORS'));
+      callback(new Error('Acceso no permitido por politica de seguridad CORS'));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -58,7 +58,7 @@ const io = new Server(server, {
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const SENDER_EMAIL = process.env.EMAIL_USER || 'reservaciones54@gmail.com';
 
-// ⏱️ 3. RATE LIMITING (PROTECCIÓN CONTRA ATAQUES DOS Y FUERZA BRUTA)
+// 3. RATE LIMITING
 const limitadorGeneral = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 2000,
@@ -77,7 +77,7 @@ const limitadorClientePublico = rateLimit({
   windowMs: 24 * 60 * 60 * 1000,
   max: 30,
   validate: { xForwardedForHeader: false },
-  message: { success: false, message: 'Has alcanzado el límite máximo de reservaciones por día.' }
+  message: { success: false, message: 'Has alcanzado el limite maximo de reservaciones por dia.' }
 });
 
 app.use(limitadorGeneral);
@@ -88,22 +88,47 @@ const TEMAS_RESTAURANTES = {
   3: { nombre: 'Llorona Comedor', color: '#f1c40f' } 
 };
 
+// Normalizador seguro de hora para MySQL (TIME)
+function normalizarHora(horaStr) {
+  if (!horaStr) return '12:00:00';
+  const str = horaStr.toString().trim();
+  const match12 = str.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm|a\.\s*m\.|p\.\s*m\.)?$/i);
+  if (match12 && match12[4]) {
+    let h = parseInt(match12[1], 10);
+    const m = match12[2];
+    const s = match12[3] || '00';
+    const period = match12[4].toLowerCase().replace(/\./g, '').trim();
+    if (period === 'pm' && h < 12) h += 12;
+    if (period === 'am' && h === 12) h = 0;
+    return `${String(h).padStart(2, '0')}:${m}:${s}`;
+  }
+  const parts = str.split(':');
+  if (parts.length >= 2) {
+    const h = String(parseInt(parts[0], 10) || 0).padStart(2, '0');
+    const m = String(parseInt(parts[1], 10) || 0).padStart(2, '0');
+    const s = parts[2] ? String(parseInt(parts[2], 10) || 0).padStart(2, '0') : '00';
+    return `${h}:${m}:${s}`;
+  }
+  return '12:00:00';
+}
+
 // =================================================================
-// FUNCIÓN DE ENVÍO DE CORREO VÍA HTTPS API (BREVO - UNIVERSAL)
+// ENVIO DE CORREO VIA HTTPS API (BREVO)
 // =================================================================
 async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveStack', idRestaurante = 1) {
   if (!reserva.email || reserva.email.trim() === '') return;
   if (!BREVO_API_KEY) {
-    console.warn('⚠️ [BREVO] No se ha configurado la variable BREVO_API_KEY en Render.');
+    console.warn('[BREVO] No se ha configurado la variable BREVO_API_KEY en Render.');
     return;
   }
 
   const infoRest = TEMAS_RESTAURANTES[idRestaurante] || { nombre: nombreRestaurante, color: '#d4af37' };
   const colorTema = infoRest.color;
-  const hostBase = process.env.BASE_URL || 'https://reservestack-backend.onrender.com';
+  const hostBase = process.env.BASE_URL || 'https://reservestack-api.onrender.com';
 
+  const idReservaSeguro = (reserva.id !== undefined && reserva.id !== null) ? reserva.id.toString() : Date.now().toString();
   const tokenCancelacion = jwt.sign(
-    { idReserva: reserva.id, idRestaurante: idRestaurante }, 
+    { idReserva: idReservaSeguro, idRestaurante: idRestaurante }, 
     SECRET_KEY, 
     { expiresIn: '30d' }
   );
@@ -114,15 +139,15 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
   let contenidoHtml = '';
 
   if (tipo === 'crear') {
-    asunto = `¡Tu Reserva está Confirmada! 🥂 - ${infoRest.nombre}`;
+    asunto = `Tu Reserva esta Confirmada - ${infoRest.nombre}`;
     contenidoHtml = `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #0d1117; color: #ffffff; border-radius: 12px; border: 2px solid ${colorTema};">
         <div style="text-align: center; border-bottom: 2px solid ${colorTema}; padding-bottom: 20px; margin-bottom: 25px;">
           <h1 style="color: ${colorTema}; margin: 0; font-size: 28px; font-family: 'Times New Roman', serif;">${infoRest.nombre.toUpperCase()}</h1>
-          <p style="color: #768f9e; margin: 5px 0 0 0; font-size: 11px; text-transform: uppercase;">Confirmación Oficial de Reserva</p>
+          <p style="color: #768f9e; margin: 5px 0 0 0; font-size: 11px; text-transform: uppercase;">Confirmacion Oficial de Reserva</p>
         </div>
         <p style="font-size: 15px; color: #9faec0;">Hola <strong style="color: #ffffff;">${reserva.nombre}</strong>,</p>
-        <p style="font-size: 15px; color: #9faec0;">Nos complace confirmarte que tu reservación ha sido registrada con éxito:</p>
+        <p style="font-size: 15px; color: #9faec0;">Nos complace confirmarte que tu reservacion ha sido registrada con exito:</p>
         
         <div style="background-color: #131b24; padding: 20px; border-radius: 8px; border: 1px solid #243141; margin: 25px 0;">
           <table style="width: 100%; border-collapse: collapse;">
@@ -130,27 +155,27 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
             <tr><td style="padding: 6px 0; color: #768f9e;">HORA:</td><td style="padding: 6px 0; color: #ffffff; text-align: right;"><b>${reserva.hora} hs</b></td></tr>
             <tr><td style="padding: 6px 0; color: #768f9e;">INVITADOS:</td><td style="padding: 6px 0; color: #ffffff; text-align: right;"><b>${reserva.personas} personas</b></td></tr>
             <tr><td style="padding: 6px 0; color: #768f9e;">ZONA:</td><td style="padding: 6px 0; color: #ffffff; text-align: right;"><b>${reserva.zona}</b></td></tr>
-            <tr><td style="padding: 6px 0; color: #768f9e;">MESA:</td><td style="padding: 6px 0; color: ${colorTema}; text-align: right;"><b>Mesa ${reserva.idMesa}</b></td></tr>
+            <tr><td style="padding: 6px 0; color: #768f9e;">MESA:</td><td style="padding: 6px 0; color: ${colorTema}; text-align: right;"><b>Mesa ${reserva.idMesa || ''}</b></td></tr>
           </table>
         </div>
         
         <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #243141;">
-          <p style="font-size: 12px; color: #768f9e; margin-bottom: 12px;">¿Deseas cancelar tu reservación?</p>
+          <p style="font-size: 12px; color: #768f9e; margin-bottom: 12px;">Deseas cancelar tu reservacion?</p>
           <a href="${urlCancelacion}" style="background-color: #c0392b; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 13px; display: inline-block;">
-            ❌ CANCELAR MI RESERVACIÓN
+            CANCELAR MI RESERVACION
           </a>
         </div>
       </div>
     `;
   } else if (tipo === 'noshow' || tipo === 'cancelar') {
-    asunto = `Aviso de Cancelación de Reserva - ${infoRest.nombre}`;
+    asunto = `Aviso de Cancelacion de Reserva - ${infoRest.nombre}`;
     contenidoHtml = `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #0d1117; color: #ffffff; border-radius: 12px; border: 2px solid ${colorTema};">
         <div style="text-align: center; border-bottom: 2px solid ${colorTema}; padding-bottom: 20px; margin-bottom: 25px;">
           <h1 style="color: ${colorTema}; margin: 0; font-size: 28px;">${infoRest.nombre.toUpperCase()}</h1>
         </div>
         <p style="font-size: 15px; color: #9faec0;">Hola <strong style="color: #ffffff;">${reserva.nombre}</strong>,</p>
-        <p style="font-size: 15px; color: #9faec0;">Te informamos que tu reservación programada para el <b>${reserva.fecha}</b> a las <b>${reserva.hora} hs</b> ha sido cancelada.</p>
+        <p style="font-size: 15px; color: #9faec0;">Te informamos que tu reservacion programada para el <b>${reserva.fecha}</b> a las <b>${reserva.hora} hs</b> ha sido cancelada.</p>
       </div>
     `;
   } else {
@@ -184,19 +209,19 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
     const data = await response.json();
 
     if (response.ok) {
-      console.log(`✅ [BREVO] Correo enviado exitosamente desde ${SENDER_EMAIL} a ${reserva.email} (MessageId: ${data.messageId})`);
+      console.log(`[BREVO] Correo enviado exitosamente desde ${SENDER_EMAIL} a ${reserva.email} (MessageId: ${data.messageId})`);
     } else {
-      console.error(`❌ [BREVO ERROR]`, data);
+      console.error(`[BREVO ERROR]`, data);
     }
   } catch (err) {
-    console.error(`❌ Error en petición a Brevo para ${reserva.email}:`, err.message);
+    console.error(`Error en peticion a Brevo para ${reserva.email}:`, err.message);
   }
 }
 
-// Cancelación de cliente vía token
+// Cancelacion de cliente via token
 app.get('/api/reservas/cancelar-cliente', async (req, res) => {
   const token = req.query.token;
-  if (!token) return res.status(400).send('<h3>Enlace de cancelación inválido.</h3>');
+  if (!token) return res.status(400).send('<h3>Enlace de cancelacion invalido.</h3>');
 
   try {
     const verificado = jwt.verify(token, SECRET_KEY);
@@ -228,15 +253,15 @@ app.get('/api/reservas/cancelar-cliente', async (req, res) => {
       <body>
         <div class="card">
           <h1>${infoRest.nombre.toUpperCase()}</h1>
-          <p>Tu reservación ha sido cancelada exitosamente.</p>
+          <p>Tu reservacion ha sido cancelada exitosamente.</p>
           <div class="badge">ESTADO: CANCELADA</div>
         </div>
       </body>
       </html>
     `);
   } catch (error) {
-    console.error('Error al cancelar reserva vía token:', error.message);
-    res.status(403).send('<h3>El enlace de cancelación ha expirado o es inválido.</h3>');
+    console.error('Error al cancelar reserva via token:', error.message);
+    res.status(403).send('<h3>El enlace de cancelacion ha expirado o es invalido.</h3>');
   }
 });
 
@@ -257,7 +282,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// --- RUTAS DE DISEÑO DE MESAS (PIETRA / ROSA / LLORONA) ---
+// --- RUTAS DE DISENO DE MESAS ---
 app.get('/api/pietra/diseno', async (req, res) => {
   req.params.idRestaurante = 1;
   return cargarDisenoHandler(req, res);
@@ -295,8 +320,8 @@ async function cargarDisenoHandler(req, res) {
 
     res.json(restauranteLayout);
   } catch (error) {
-    console.error('Error al cargar diseño de mesas:', error);
-    res.status(500).json({ error: 'Error interno al cargar diseño' });
+    console.error('Error al cargar diseno de mesas:', error);
+    res.status(500).json({ error: 'Error interno al cargar diseno' });
   }
 }
 
@@ -313,23 +338,23 @@ async function guardarDisenoHandler(req, res) {
     for (const zona in restauranteLayout) {
       const mesas = restauranteLayout[zona] || [];
       for (const m of mesas) {
+        const mesaId = (m.id !== undefined && m.id !== null) ? m.id.toString() : Date.now().toString();
         await connection.query(insertQuery, [
-          m.id.toString(), idRestaurante, zona, m.c, m.x || 10, m.y || 10, m.isMerged ? 1 : 0, m.isVertical ? 1 : 0, m.displayId || m.id.toString(), m.originalTables ? JSON.stringify(m.originalTables) : null
+          mesaId, idRestaurante, zona, m.c || 2, m.x || 10, m.y || 10, m.isMerged ? 1 : 0, m.isVertical ? 1 : 0, m.displayId || mesaId, m.originalTables ? JSON.stringify(m.originalTables) : null
         ]);
       }
     }
     await connection.commit(); 
 
-    // EMISIÓN A TODOS LOS CLIENTES EN VIVO
     if (idRestaurante === 1) io.emit('actualizar_diseno_pietra', restauranteLayout);
     if (idRestaurante === 2) io.emit('actualizar_diseno_rosa', restauranteLayout);
     if (idRestaurante === 3) io.emit('actualizar_diseno_llorona', restauranteLayout);
 
-    res.json({ success: true, message: 'Diseño guardado y sincronizado en la nube' });
+    res.json({ success: true, message: 'Diseno guardado y sincronizado en la nube' });
   } catch (error) {
     await connection.rollback(); 
-    console.error('Error al guardar diseño:', error);
-    res.status(500).json({ error: 'Error interno al guardar diseño' });
+    console.error('Error al guardar diseno:', error);
+    res.status(500).json({ error: 'Error interno al guardar diseno' });
   } finally {
     connection.release(); 
   }
@@ -364,6 +389,10 @@ async function guardarReservaHandler(req, res) {
   const { id, fecha, hora, zona, idMesa, nombre, personas, telefono, email, nota, estado, tipoCorreo, isNewRecord } = req.body;
 
   try {
+    const idFinal = (id !== undefined && id !== null) ? id.toString() : Date.now().toString();
+    const mesaFinal = (idMesa !== undefined && idMesa !== null) ? idMesa.toString() : '1';
+    const horaNormalizada = normalizarHora(hora);
+
     const query = `
       INSERT INTO reservas (id_reserva, id_restaurante, fecha, hora, zona, id_mesa, nombre, personas, telefono, email, nota, estado)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -371,7 +400,7 @@ async function guardarReservaHandler(req, res) {
         fecha = VALUES(fecha), hora = VALUES(hora), zona = VALUES(zona), id_mesa = VALUES(id_mesa), nombre = VALUES(nombre), personas = VALUES(personas), telefono = VALUES(telefono), email = VALUES(email), nota = VALUES(nota), estado = VALUES(estado)
     `;
     await db.query(query, [
-      id.toString(), idRestaurante, fecha, hora, zona, idMesa.toString(), nombre, personas, telefono || null, email || null, nota || null, estado
+      idFinal, idRestaurante, fecha, horaNormalizada, zona, mesaFinal, nombre, personas, telefono || null, email || null, nota || null, estado
     ]);
 
     const reservasActualizadas = await obtenerReservasPorRestaurante(idRestaurante);
@@ -383,17 +412,17 @@ async function guardarReservaHandler(req, res) {
     const nombreRestaurante = TEMAS_RESTAURANTES[idRestaurante] ? TEMAS_RESTAURANTES[idRestaurante].nombre : 'ReserveStack';
 
     if (tipoCorreo === 'noshow' || tipoCorreo === 'cancelar' || tipoCorreo === 'crear' || isNewRecord) {
-      enviarCorreoPorTipo(req.body, tipoCorreo || 'crear', nombreRestaurante, idRestaurante).catch(e => {});
+      enviarCorreoPorTipo({ ...req.body, id: idFinal, hora: horaNormalizada, idMesa: mesaFinal }, tipoCorreo || 'crear', nombreRestaurante, idRestaurante).catch(() => {});
     }
 
-    res.json({ success: true, message: 'Reserva guardada con éxito en la nube' });
+    res.json({ success: true, message: 'Reserva guardada con exito en la nube' });
   } catch (error) {
     console.error(`Error al guardar reserva en restaurante ${idRestaurante}:`, error);
     res.status(500).json({ error: 'Error interno al guardar en MySQL' });
   }
 }
 
-// Endpoint público clientes
+// Endpoint publico clientes
 app.post('/api/publico/reservas', limitadorClientePublico, async (req, res) => {
   const { idRestaurante, fecha, hora, zona, idMesa, nombre, personas, telefono, email, nota } = req.body;
 
@@ -402,6 +431,8 @@ app.post('/api/publico/reservas', limitadorClientePublico, async (req, res) => {
   }
 
   const idReserva = Date.now().toString();
+  const mesaFinal = (idMesa !== undefined && idMesa !== null) ? idMesa.toString() : '1';
+  const horaNormalizada = normalizarHora(hora);
 
   try {
     const query = `
@@ -409,7 +440,7 @@ app.post('/api/publico/reservas', limitadorClientePublico, async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'reservada')
     `;
     await db.query(query, [
-      idReserva, idRestaurante, fecha, hora, zona || 'General', idMesa.toString() || '1', nombre, personas || 2, telefono || null, email || null, nota || null
+      idReserva, idRestaurante, fecha, horaNormalizada, zona || 'General', mesaFinal, nombre, personas || 2, telefono || null, email || null, nota || null
     ]);
 
     const idRestNum = Number(idRestaurante);
@@ -420,11 +451,11 @@ app.post('/api/publico/reservas', limitadorClientePublico, async (req, res) => {
     if (idRestNum === 3) io.emit('actualizar_llorona', reservasActualizadas);
 
     const nombreRest = TEMAS_RESTAURANTES[idRestNum] ? TEMAS_RESTAURANTES[idRestNum].nombre : 'ReserveStack';
-    enviarCorreoPorTipo({ id: idReserva, fecha, hora, zona, idMesa, nombre, personas, email, nota }, 'crear', nombreRest, idRestNum);
+    enviarCorreoPorTipo({ id: idReserva, fecha, hora: horaNormalizada, zona, idMesa: mesaFinal, nombre, personas, email, nota }, 'crear', nombreRest, idRestNum);
 
-    res.json({ success: true, message: 'Reserva registrada con éxito' });
+    res.json({ success: true, message: 'Reserva registrada con exito' });
   } catch (error) {
-    console.error('Error en reserva pública:', error);
+    console.error('Error en reserva publica:', error);
     res.status(500).json({ success: false, message: 'No se pudo registrar la reserva en MySQL' });
   }
 });
@@ -435,7 +466,7 @@ app.post('/api/auth/login', limitadorAuth, async (req, res) => {
   const password = (req.body.password || '').trim();
 
   if (!usuarioOEmail || !password) {
-    return res.status(400).json({ success: false, message: 'Usuario y contraseña son requeridos' });
+    return res.status(400).json({ success: false, message: 'Usuario y contrasena son requeridos' });
   }
 
   try {
@@ -478,14 +509,14 @@ app.post('/api/auth/login', limitadorAuth, async (req, res) => {
       });
     }
 
-    res.status(401).json({ success: false, message: 'Correo o contraseña incorrectos' });
+    res.status(401).json({ success: false, message: 'Correo o contrasena incorrectos' });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Error interno en autenticación' });
+    res.status(500).json({ success: false, message: 'Error interno en autenticacion' });
   }
 });
 
 server.listen(PORT, () => {
   console.log('==================================================');
-  console.log(`🚀 Servidor ReserveStack escuchando en puerto ${PORT}`);
+  console.log('Servidor ReserveStack escuchando en puerto ' + PORT);
   console.log('==================================================');
 });
