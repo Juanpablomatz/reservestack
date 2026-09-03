@@ -48,7 +48,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   chartInstanceOrigen: any = null;
   tipoGraficaZonas: string = 'pie';
 
-  // --- VARIABLES DEL EDITOR ---
+  // CONTROL DEL EDITOR DE PLANO
   modoEdicion: boolean = false;
   modoCombinar: boolean = false;
   mesaACombinar: any = null;
@@ -56,7 +56,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   respaldoRestaurante: string = '';
   resolverTipoFusion: ((esPermanente: boolean | null) => void) | null = null;
 
-  // --- CONTROL DE RENDERIZADO Y REINTENTOS ---
+  // CONTROL DE RENDERIZADO Y REINTENTOS
   private reintentosDibujo: number = 0;
   private maxReintentos: number = 10;
   private sistemaInicializado: boolean = false;
@@ -114,18 +114,18 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     }
   }
 
-  ionViewWillEnter() {
-    this.authService.guardarUltimaRuta('/llorona');
-    this.cargarReservasDesdeCache();
-    this.cargarLayoutPorFecha(this.fechaSeleccionada);
-  }
-
   ngAfterViewInit() {
     this.ejecutarMontajeVista();
   }
 
-  ionViewDidEnter() {
+  ionViewWillEnter() {
     this.authService.guardarUltimaRuta('/llorona');
+    this.cargarReservasDesdeCache();
+    this.cargarLayoutPorFecha(this.fechaSeleccionada);
+    this.ejecutarMontajeVista();
+  }
+
+  ionViewDidEnter() {
     this.ejecutarMontajeVista();
   }
 
@@ -163,14 +163,16 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
           this.asegurarCoordenadasGrid();
           return;
         }
-      } catch(e) {}
+      } catch (e) {}
     }
 
     if (this.tieneMesasValidas(this.disenoMaestro)) {
       this.restaurante = JSON.parse(JSON.stringify(this.disenoMaestro));
-    } else {
-      this.restaurante = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
+      this.asegurarCoordenadasGrid();
+      return;
     }
+
+    this.restaurante = JSON.parse(JSON.stringify(this.PLANO_DEFECTO));
     this.asegurarCoordenadasGrid();
   }
 
@@ -469,10 +471,10 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
   configurarOpcionesEditor() {
     document.getElementById('btn-add-mesa')?.addEventListener('click', () => {
-      const numMesa = prompt('Escribe el número de la nueva mesa para Llorona Comedor:');
+      const numMesa = prompt('Escribe el numero de la nueva mesa para Llorona Comedor:');
       if (!numMesa) return;
       const numId = parseInt(numMesa, 10);
-      if (isNaN(numId)) { alert('Número de mesa no válido.'); return; }
+      if (isNaN(numId)) { alert('Numero de mesa no valido.'); return; }
 
       let existe = false;
       for (const z in this.restaurante) {
@@ -481,7 +483,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
           break; 
         }
       }
-      if (existe) { alert('El número de mesa ya existe.'); return; }
+      if (existe) { alert('El numero de mesa ya existe.'); return; }
 
       const capMesa = prompt('Escribe la capacidad de comensales (PAX) para la Mesa ' + numId + ':', '4');
       const capNum = capMesa ? parseInt(capMesa, 10) : 4;
@@ -551,7 +553,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     });
 
     document.getElementById('btn-cancel-edicion')?.addEventListener('click', () => {
-      if (confirm('¿Descartar los cambios de distribución de mesa?')) {
+      if (confirm('Deseas descartar los cambios de distribucion de mesa?')) {
         this.cargarLayoutPorFecha(this.fechaSeleccionada);
         this.modoEdicion = false;
         this.modoCombinar = false;
@@ -695,7 +697,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         if (isSelectedEditor) {
           divMesa.querySelector('.btn-edit-pax')?.addEventListener('click', (e) => {
             e.stopPropagation();
-            const nuevoId = prompt(`Nuevo número/etiqueta para la Mesa ${textoNumero}:`, textoNumero.toString());
+            const nuevoId = prompt(`Nuevo numero/etiqueta para la Mesa ${textoNumero}:`, textoNumero.toString());
             if (nuevoId && nuevoId.trim() !== '') {
               const valTrim = nuevoId.trim();
               mesa.displayId = valTrim;
@@ -707,7 +709,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
                 }
               }
             }
-            const nuevaCap = prompt(`Cambiar capacidad para la Mesa ${textoNumero} (Mínimo 1, Máximo 50):`, mesa.c.toString());
+            const nuevaCap = prompt(`Cambiar capacidad para la Mesa ${textoNumero} (Minimo 1, Maximo 50):`, mesa.c.toString());
             if (nuevaCap) {
               let capNum = parseInt(nuevaCap, 10);
               if (!isNaN(capNum) && capNum > 0) {
@@ -726,7 +728,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
           divMesa.querySelector('.btn-delete-mesa')?.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (confirm(`¿Eliminar la Mesa ${textoNumero}?`)) {
+            if (confirm(`Deseas eliminar la Mesa ${textoNumero}?`)) {
               this.restaurante[zona] = this.restaurante[zona].filter((m: any) => m !== mesa && m.id !== mesa.id);
               if (this.disenoMaestro && this.disenoMaestro[zona]) {
                 this.disenoMaestro[zona] = this.disenoMaestro[zona].filter((m: any) => m !== mesa && m.id !== mesa.id);
@@ -787,9 +789,16 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         this.disenoMaestro = JSON.parse(JSON.stringify(this.restaurante));
         console.warn('La fusion permanente no se pudo sincronizar con el servidor.', error);
       }
+    } else {
+      this.guardarLayoutFechaActual();
+      this.modoEdicion = false;
+      this.modoCombinar = false;
+      this.mesaACombinar = null;
+      this.mesaSeleccionadaEdicion = null;
+      document.getElementById('toolbar-editor')?.classList.add('oculto');
+      document.getElementById('aviso-combinar')?.classList.add('oculto');
     }
 
-    this.guardarLayoutFechaActual();
     alert(`Mesas fusionadas con exito para Llorona Comedor como Mesa ${mesaFusionada.displayId}.`);
     this.dibujarMesas(zona);
   }
@@ -798,7 +807,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     if (!mesa.isMerged || !mesa.originalTables || !Array.isArray(mesa.originalTables)) return;
     
     const textoNombre = mesa.displayId || mesa.id;
-    if (confirm(`¿Desvincular la Mesa ${textoNombre} y restaurar las mesas individuales originales en Llorona Comedor?`)) {
+    if (confirm(`Deseas desvincular la Mesa ${textoNombre} y restaurar las mesas individuales originales en Llorona Comedor?`)) {
       const zona = this.zonaActiva;
 
       const indiceRestaurante = this.restaurante[zona].findIndex((m: any) => m === mesa || m.id === mesa.id);
@@ -839,41 +848,48 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   reservaPerteneceAMesa(res: any, mesa: any): boolean {
     if (!res || !res.idMesa || !mesa) return false;
     const resIdStr = res.idMesa.toString().trim().toLowerCase();
-    const mesaIdStr = mesa.id ? mesa.id.toString().trim().toLowerCase() : '';
+    const mesaIdStr = mesa.id !== undefined && mesa.id !== null ? mesa.id.toString().trim().toLowerCase() : '';
     const displayIdStr = mesa.displayId ? mesa.displayId.toString().trim().toLowerCase() : '';
 
-    // 1. Coincidencia directa por id o por displayId
     if (resIdStr === mesaIdStr || (displayIdStr && resIdStr === displayIdStr)) {
       return true;
     }
 
-    // 2. Si la mesa es fusionada
     if (mesa.isMerged) {
+      let esSubMesa = false;
+
       if (displayIdStr.includes('+')) {
         const subIds = displayIdStr.split('+').map((s: string) => s.trim().toLowerCase());
-        if (subIds.includes(resIdStr)) return true;
+        if (subIds.includes(resIdStr)) {
+          esSubMesa = true;
+        }
       }
 
-      // Si coincide con originalTables, solo atribuir si NO existe otra mesa independiente activa que tenga ese mismo ID
-      if (mesa.originalTables && Array.isArray(mesa.originalTables)) {
-        const coincideConOriginal = mesa.originalTables.some((orig: any) => {
-          const origId = orig.id ? orig.id.toString().trim().toLowerCase() : '';
+      if (!esSubMesa && mesa.originalTables && Array.isArray(mesa.originalTables)) {
+        esSubMesa = mesa.originalTables.some((orig: any) => {
+          const origId = orig.id !== undefined && orig.id !== null ? orig.id.toString().trim().toLowerCase() : '';
           const origDisplay = orig.displayId ? orig.displayId.toString().trim().toLowerCase() : '';
           return resIdStr === origId || (origDisplay && resIdStr === origDisplay);
         });
+      }
 
-        if (coincideConOriginal) {
-          const mesasZona = this.restaurante[mesa.zona || this.zonaActiva] || [];
-          const existeMesaIndependiente = mesasZona.some((otraMesa: any) => {
-            if (otraMesa === mesa || otraMesa.id === mesa.id) return false;
-            const otraIdStr = otraMesa.id ? otraMesa.id.toString().trim().toLowerCase() : '';
-            const otraDisplayStr = otraMesa.displayId ? otraMesa.displayId.toString().trim().toLowerCase() : '';
-            return otraIdStr === resIdStr || (otraDisplayStr && otraDisplayStr === resIdStr);
+      if (esSubMesa) {
+        let mesaIndependienteExiste = false;
+        for (const z in this.restaurante) {
+          const encontrada = (this.restaurante[z] || []).some((m: any) => {
+            if (m.id === mesa.id) return false;
+            const mId = m.id !== undefined && m.id !== null ? m.id.toString().trim().toLowerCase() : '';
+            const mDisp = m.displayId ? m.displayId.toString().trim().toLowerCase() : '';
+            return mId === resIdStr || mDisp === resIdStr;
           });
-
-          if (!existeMesaIndependiente) {
-            return true;
+          if (encontrada) {
+            mesaIndependienteExiste = true;
+            break;
           }
+        }
+
+        if (!mesaIndependienteExiste) {
+          return true;
         }
       }
     }
@@ -947,7 +963,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         else elemento.classList.add('bloqueada');
         
         const totalPax = arr.reduce((sum: number, r: any) => sum + parseInt(r.personas || 0), 0);
-        elemento.innerHTML = `<span class="res-nombre">Múltiples</span><span class="res-pax">${totalPax}p</span>`;
+        elemento.innerHTML = `<span class="res-nombre">Multiples</span><span class="res-pax">${totalPax}p</span>`;
       }
     });
   }
@@ -1018,12 +1034,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     });
 
     let totalMesasFisicas = 0;
-    Object.values(this.restaurante).forEach((zona: any) => {
-      if (Array.isArray(zona)) {
-        totalMesasFisicas += zona.length;
-      }
-    });
-
+    Object.values(this.restaurante).forEach((zona: any) => totalMesasFisicas += (Array.isArray(zona) ? zona.length : 0));
     const libres = Math.max(0, totalMesasFisicas - (ocupadas + reservadas));
     const porcentaje = totalMesasFisicas > 0 ? Math.round((ocupadas / totalMesasFisicas) * 100) : 0;
 
@@ -1104,7 +1115,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     const idMesa = mesa.displayId || mesa.id;
 
     if (this.modoMover) {
-      if(confirm(`¿Mover reserva a Mesa ${idMesa}?`)) {
+      if(confirm(`Deseas mover la reserva a Mesa ${idMesa}?`)) {
           this.ejecutarMover(idMesa, zona);
       } else {
           this.cancelarModoMover();
@@ -1249,7 +1260,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         });
         crearBotonPop('Cancelar', 'btn-cancelar', 'fa-trash-alt', () => {
           popover.classList.add('oculto');
-          if (confirm('¿Cancelar la reserva y notificar al cliente por correo?')) {
+          if (confirm('Deseas cancelar la reserva y notificar al cliente por correo?')) {
             realRes.estado = 'cancelada';
             this.guardarReservasEnCache();
             this.guardarReservaEnServidor(realRes, 'noshow');
@@ -1291,7 +1302,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       if (notaBox) notaBox.classList.add('oculto');
 
       if (statusBadge) {
-        statusBadge.textContent = `MÚLTIPLES (${arrReservas.length})`;
+        statusBadge.textContent = `MULTIPLES (${arrReservas.length})`;
         statusBadge.className = 'popover-status-badge reservada';
       }
 
@@ -1396,7 +1407,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
         cardItem.querySelector('.btn-cancelar')?.addEventListener('click', (e) => {
           e.stopPropagation();
           popover.classList.add('oculto');
-          if (confirm(`¿Cancelar reserva de ${realItem.nombre} y enviar correo?`)) {
+          if (confirm(`Deseas cancelar la reserva de ${realItem.nombre} y enviar correo?`)) {
             realItem.estado = 'cancelada';
             this.guardarReservasEnCache();
             this.guardarReservaEnServidor(realItem, 'noshow');
@@ -1468,7 +1479,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     const modalWalkin = document.getElementById('modal-walkin');
     if (modalWalkin) {
         const h2 = modalWalkin.querySelector('.modal-header h2');
-        if (h2) h2.textContent = 'Walk-in Rápido - Llorona Comedor';
+        if (h2) h2.textContent = 'Walk-in Rapido - Llorona Comedor';
         const btn = document.getElementById('btn-confirmar-walkin');
         if (btn) btn.innerHTML = '<i class="fas fa-check"></i> Ocupar Mesa';
         const inputWalkin = document.getElementById('input-pax-walkin') as HTMLInputElement;
@@ -1680,7 +1691,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       }
 
       if (alertaChoque) {
-          const confirmar = confirm('ATENCION: Ya hay una reserva en esa mesa con menos de 1 hora de diferencia. ¿Deseas forzar este Double-Booking?');
+          const confirmar = confirm('ATENCION: Ya hay una reserva en esa mesa con menos de 1 hora de diferencia. Deseas forzar esta reserva?');
           if (!confirmar) return; 
       }
 
@@ -1801,7 +1812,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
           this.dibujarMesas(this.zonaActiva);
         });
         crearBoton('Cancelar por No-Show (15 min)', 'btn-cancelar', 'fa-trash-alt', () => {
-          if (confirm('¿Cancelar por tolerancia de 15 minutos vencida y notificar por correo?')) {
+          if (confirm('Deseas cancelar por tolerancia de 15 minutos vencida y notificar por correo?')) {
             reserva.estado = 'cancelada';
             this.guardarReservasEnCache();
             this.guardarReservaEnServidor(reserva, 'noshow');
@@ -1853,7 +1864,7 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   }
 
   // =========================================================================
-  // MOTOR DE ANALITICA Y REPORTES AVANZADO - LLORONA COMEDOR
+  // MOTOR DE ANALITICA Y REPORTES - LLORONA COMEDOR
   // =========================================================================
   async cargarChartJS(): Promise<void> {
     return new Promise((resolve) => {
@@ -1870,7 +1881,6 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   }
 
   actualizarAnalitica(reservasDelDia: any[]) {
-    // 1. Filtrar por Turno (Todo / Comida / Cena)
     const reservasFiltradasPorTurno = reservasDelDia.filter(r => {
       if (this.turnoSeleccionado === 'todo') return true;
       if (!r.hora) return true;
@@ -1880,11 +1890,9 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       return true;
     });
 
-    // 2. Clasificacion: Atendidas / Activas vs Canceladas
     const efectivas = reservasFiltradasPorTurno.filter(r => r.estado !== 'cancelada' && r.estado !== 'bloqueada');
     const canceladas = reservasFiltradasPorTurno.filter(r => r.estado === 'cancelada');
 
-    // 3. Calculos de KPIs
     const totalComensalesPax = efectivas.reduce((sum, r) => sum + parseInt(r.personas || 0, 10), 0);
     const totalMesasOperadas = efectivas.length;
 
@@ -1901,7 +1909,6 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
     const paxPromedio = totalMesasOperadas > 0 ? (totalComensalesPax / totalMesasOperadas).toFixed(1) : '0.0';
 
-    // Hora Pico
     const horasConteo: { [key: string]: number } = {};
     efectivas.forEach(r => {
       if (r.hora) {
@@ -1919,7 +1926,6 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
       }
     });
 
-    // Zona de Llorona Comedor (Zona unica: Piso)
     const zonasConteo: { [key: string]: number } = {
       'Piso': 0
     };
@@ -1934,17 +1940,14 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
 
     let zonaTop = 'Piso';
 
-    // Tasa de Efectividad (Asistencia vs Cancelacion)
     const totalIntentos = efectivas.length + canceladas.length;
     const tasaEfectividadNum = totalIntentos > 0 ? Math.round((efectivas.length / totalIntentos) * 100) : 100;
     const tasaEfectividadTxt = `${tasaEfectividadNum}%`;
 
-    // Indice de Rotacion de Mesas
     let totalMesasFisicas = 0;
     Object.values(this.restaurante).forEach((arr: any) => totalMesasFisicas += (Array.isArray(arr) ? arr.length : 0));
     const rotacionMesas = totalMesasFisicas > 0 ? (totalMesasOperadas / totalMesasFisicas).toFixed(1) + 'x' : '0.0x';
 
-    // 4. Actualizar el DOM de los 8 KPIs
     const el = (id: string, val: string | number) => { 
       const e = document.getElementById(id); 
       if (e) e.textContent = val.toString(); 
@@ -1959,7 +1962,6 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     el('kpi-tasa-efectividad', tasaEfectividadTxt);
     el('kpi-rotacion-mesas', rotacionMesas);
 
-    // 5. Renderizar las 3 Graficas
     this.renderizarGraficasAnalitica(efectivas, zonasConteo, totalReservasWeb, totalWalkins);
   }
 
@@ -1972,7 +1974,6 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     this.dibujarGraficaOrigen(reservasWeb, walkins);
   }
 
-  // GRAFICA 1: FLUJO HORARIO (13:00 A 23:00)
   dibujarGraficaHorarios(efectivas: any[]) {
     const canvas = document.getElementById('grafica-horarios') as HTMLCanvasElement;
     if (!canvas) return;
@@ -2022,7 +2023,6 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     });
   }
 
-  // GRAFICA 2: DEMANDA POR ZONAS (LLORONA COMEDOR)
   dibujarGraficaZonas(datosZonas: any) {
     const canvas = document.getElementById('grafica-zonas') as HTMLCanvasElement;
     if (!canvas) return;
@@ -2068,7 +2068,6 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
     });
   }
 
-  // GRAFICA 3: ORIGEN DE COMENSALES (RESERVAS WEB VS WALK-IN)
   dibujarGraficaOrigen(reservasWeb: number, walkins: number) {
     const canvas = document.getElementById('grafica-origen') as HTMLCanvasElement;
     if (!canvas) return;

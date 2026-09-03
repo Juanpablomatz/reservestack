@@ -1,5 +1,7 @@
 const mysql = require('mysql2/promise');
 
+const isRemote = process.env.DB_HOST && process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1';
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT || 3306),
@@ -9,7 +11,8 @@ const pool = mysql.createPool({
   ssl: process.env.DB_HOST && process.env.DB_HOST !== 'localhost' ? { rejectUnauthorized: false } : undefined,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  ssl: isRemote ? { rejectUnauthorized: false } : undefined
 });
 
 module.exports = pool;

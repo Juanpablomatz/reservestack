@@ -66,7 +66,7 @@ const io = new Server(server, {
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const SENDER_EMAIL = process.env.EMAIL_USER || 'reservaciones54@gmail.com';
 
-// 3. RATE LIMITING (PROTECCION CONTRA ATAQUES DOS Y FUERZA BRUTA)
+// 3. RATE LIMITING
 const limitadorGeneral = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 2000,
@@ -96,8 +96,32 @@ const TEMAS_RESTAURANTES = {
   3: { nombre: 'Llorona Comedor', color: '#f1c40f' } 
 };
 
+// Normalizador seguro de hora para MySQL (TIME)
+function normalizarHora(horaStr) {
+  if (!horaStr) return '12:00:00';
+  const str = horaStr.toString().trim();
+  const match12 = str.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm|a\.\s*m\.|p\.\s*m\.)?$/i);
+  if (match12 && match12[4]) {
+    let h = parseInt(match12[1], 10);
+    const m = match12[2];
+    const s = match12[3] || '00';
+    const period = match12[4].toLowerCase().replace(/\./g, '').trim();
+    if (period === 'pm' && h < 12) h += 12;
+    if (period === 'am' && h === 12) h = 0;
+    return `${String(h).padStart(2, '0')}:${m}:${s}`;
+  }
+  const parts = str.split(':');
+  if (parts.length >= 2) {
+    const h = String(parseInt(parts[0], 10) || 0).padStart(2, '0');
+    const m = String(parseInt(parts[1], 10) || 0).padStart(2, '0');
+    const s = parts[2] ? String(parseInt(parts[2], 10) || 0).padStart(2, '0') : '00';
+    return `${h}:${m}:${s}`;
+  }
+  return '12:00:00';
+}
+
 // =================================================================
-// FUNCION DE ENVIO DE CORREO VIA HTTPS API (BREVO - UNIVERSAL)
+// ENVIO DE CORREO VIA HTTPS API (BREVO)
 // =================================================================
 async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveStack', idRestaurante = 1) {
   if (!reserva.email || reserva.email.trim() === '') return;
@@ -108,10 +132,11 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
 
   const infoRest = TEMAS_RESTAURANTES[idRestaurante] || { nombre: nombreRestaurante, color: '#d4af37' };
   const colorTema = infoRest.color;
-  const hostBase = process.env.BASE_URL || 'https://reservestack-backend.onrender.com';
+  const hostBase = process.env.BASE_URL || 'https://reservestack-api.onrender.com';
 
+  const idReservaSeguro = (reserva.id !== undefined && reserva.id !== null) ? reserva.id.toString() : Date.now().toString();
   const tokenCancelacion = jwt.sign(
-    { idReserva: reserva.id, idRestaurante: idRestaurante }, 
+    { idReserva: idReservaSeguro, idRestaurante: idRestaurante }, 
     SECRET_KEY, 
     { expiresIn: '30d' }
   );
@@ -122,7 +147,7 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
   let contenidoHtml = '';
 
   if (tipo === 'crear') {
-    asunto = `Confirmacion de Reserva - ${infoRest.nombre}`;
+    asunto = `Tu Reserva esta Confirmada - ${infoRest.nombre}`;
     contenidoHtml = `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #0d1117; color: #ffffff; border-radius: 12px; border: 2px solid ${colorTema};">
         <div style="text-align: center; border-bottom: 2px solid ${colorTema}; padding-bottom: 20px; margin-bottom: 25px;">
@@ -138,7 +163,7 @@ async function enviarCorreoPorTipo(reserva, tipo, nombreRestaurante = 'ReserveSt
             <tr><td style="padding: 6px 0; color: #768f9e;">HORA:</td><td style="padding: 6px 0; color: #ffffff; text-align: right;"><b>${reserva.hora} hs</b></td></tr>
             <tr><td style="padding: 6px 0; color: #768f9e;">INVITADOS:</td><td style="padding: 6px 0; color: #ffffff; text-align: right;"><b>${reserva.personas} personas</b></td></tr>
             <tr><td style="padding: 6px 0; color: #768f9e;">ZONA:</td><td style="padding: 6px 0; color: #ffffff; text-align: right;"><b>${reserva.zona}</b></td></tr>
-            <tr><td style="padding: 6px 0; color: #768f9e;">MESA:</td><td style="padding: 6px 0; color: ${colorTema}; text-align: right;"><b>Mesa ${reserva.idMesa}</b></td></tr>
+            <tr><td style="padding: 6px 0; color: #768f9e;">MESA:</td><td style="padding: 6px 0; color: ${colorTema}; text-align: right;"><b>Mesa ${reserva.idMesa || ''}</b></td></tr>
           </table>
         </div>
         
@@ -268,7 +293,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// --- RUTAS DE DISENO DE MESAS (PIETRA / ROSA / LLORONA) ---
+// --- RUTAS DE DISENO DE MESAS ---
 app.get('/api/pietra/diseno', async (req, res) => {
   req.params.idRestaurante = 1;
   return cargarDisenoHandler(req, res);
@@ -325,14 +350,14 @@ async function guardarDisenoHandler(req, res) {
     for (const zona in restauranteLayout) {
       const mesas = restauranteLayout[zona] || [];
       for (const m of mesas) {
+        const mesaId = (m.id !== undefined && m.id !== null) ? m.id.toString() : Date.now().toString();
         await connection.query(insertQuery, [
-          m.id.toString(), idRestaurante, zona, m.c, m.x || 10, m.y || 10, m.isMerged ? 1 : 0, m.isVertical ? 1 : 0, m.displayId || m.id.toString(), m.originalTables ? JSON.stringify(m.originalTables) : null
+          mesaId, idRestaurante, zona, m.c || 2, m.x || 10, m.y || 10, m.isMerged ? 1 : 0, m.isVertical ? 1 : 0, m.displayId || mesaId, m.originalTables ? JSON.stringify(m.originalTables) : null
         ]);
       }
     }
     await connection.commit(); 
 
-    // EMISION A TODOS LOS CLIENTES EN VIVO
     if (idRestaurante === 1) io.emit('actualizar_diseno_pietra', restauranteLayout);
     if (idRestaurante === 2) io.emit('actualizar_diseno_rosa', restauranteLayout);
     if (idRestaurante === 3) io.emit('actualizar_diseno_llorona', restauranteLayout);
@@ -378,6 +403,10 @@ async function guardarReservaHandler(req, res) {
   const { id, fecha, hora, zona, idMesa, nombre, personas, telefono, email, nota, estado, tipoCorreo, isNewRecord } = req.body;
 
   try {
+    const idFinal = (id !== undefined && id !== null) ? id.toString() : Date.now().toString();
+    const mesaFinal = (idMesa !== undefined && idMesa !== null) ? idMesa.toString() : '1';
+    const horaNormalizada = normalizarHora(hora);
+
     const query = `
       INSERT INTO reservas (id_reserva, id_restaurante, fecha, hora, zona, id_mesa, nombre, personas, telefono, email, nota, estado)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -385,7 +414,7 @@ async function guardarReservaHandler(req, res) {
         fecha = VALUES(fecha), hora = VALUES(hora), zona = VALUES(zona), id_mesa = VALUES(id_mesa), nombre = VALUES(nombre), personas = VALUES(personas), telefono = VALUES(telefono), email = VALUES(email), nota = VALUES(nota), estado = VALUES(estado)
     `;
     await db.query(query, [
-      id.toString(), idRestaurante, fecha, hora, zona, idMesa.toString(), nombre, personas, telefono || null, email || null, nota || null, estado
+      idFinal, idRestaurante, fecha, horaNormalizada, zona, mesaFinal, nombre, personas, telefono || null, email || null, nota || null, estado
     ]);
 
     const reservasActualizadas = await obtenerReservasPorRestaurante(idRestaurante);
@@ -397,7 +426,7 @@ async function guardarReservaHandler(req, res) {
     const nombreRestaurante = TEMAS_RESTAURANTES[idRestaurante] ? TEMAS_RESTAURANTES[idRestaurante].nombre : 'ReserveStack';
 
     if (tipoCorreo === 'noshow' || tipoCorreo === 'cancelar' || tipoCorreo === 'crear' || isNewRecord) {
-      enviarCorreoPorTipo(req.body, tipoCorreo || 'crear', nombreRestaurante, idRestaurante).catch(e => {
+      enviarCorreoPorTipo({ ...req.body, id: idFinal, hora: horaNormalizada, idMesa: mesaFinal }, tipoCorreo || 'crear', nombreRestaurante, idRestaurante).catch((e) => {
         Sentry.captureException(e);
       });
     }
@@ -419,6 +448,8 @@ app.post('/api/publico/reservas', limitadorClientePublico, async (req, res) => {
   }
 
   const idReserva = Date.now().toString();
+  const mesaFinal = (idMesa !== undefined && idMesa !== null) ? idMesa.toString() : '1';
+  const horaNormalizada = normalizarHora(hora);
 
   try {
     const query = `
@@ -426,7 +457,7 @@ app.post('/api/publico/reservas', limitadorClientePublico, async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'reservada')
     `;
     await db.query(query, [
-      idReserva, idRestaurante, fecha, hora, zona || 'General', idMesa.toString() || '1', nombre, personas || 2, telefono || null, email || null, nota || null
+      idReserva, idRestaurante, fecha, horaNormalizada, zona || 'General', mesaFinal, nombre, personas || 2, telefono || null, email || null, nota || null
     ]);
 
     const idRestNum = Number(idRestaurante);
@@ -437,7 +468,9 @@ app.post('/api/publico/reservas', limitadorClientePublico, async (req, res) => {
     if (idRestNum === 3) io.emit('actualizar_llorona', reservasActualizadas);
 
     const nombreRest = TEMAS_RESTAURANTES[idRestNum] ? TEMAS_RESTAURANTES[idRestNum].nombre : 'ReserveStack';
-    enviarCorreoPorTipo({ id: idReserva, fecha, hora, zona, idMesa, nombre, personas, email, nota }, 'crear', nombreRest, idRestNum);
+    enviarCorreoPorTipo({ id: idReserva, fecha, hora: horaNormalizada, zona, idMesa: mesaFinal, nombre, personas, email, nota }, 'crear', nombreRest, idRestNum).catch((e) => {
+      Sentry.captureException(e);
+    });
 
     res.json({ success: true, message: 'Reserva registrada con exito' });
   } catch (error) {
@@ -512,6 +545,6 @@ if (typeof Sentry.setupExpressErrorHandler === 'function') {
 
 server.listen(PORT, () => {
   console.log('==================================================');
-  console.log(` Servidor ReserveStack escuchando en puerto ${PORT}`);
+  console.log('Servidor ReserveStack escuchando en puerto ' + PORT);
   console.log('==================================================');
 });
