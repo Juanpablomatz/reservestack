@@ -2,18 +2,15 @@
    TEMA PÚBLICO RESERVAR - LLORONA COMEDOR
    ======================================================== */
 
-:host {
-  display: block;
-  min-height: 100vh;
-  background-color: #0f0905;
-  font-family: 'Segoe UI', Roboto, sans-serif;
+/* Fondo general de la app */
+ion-content.fondo-pantalla {
+  --background: #080808 !important;
+  background: #080808 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   color: #ffffff;
 }
 
-.fondo-pantalla {
-  --background: #0f0905 !important;
-}
-
+/* Contenedor exterior centrado */
 .reservar-container {
   display: flex;
   justify-content: center;
@@ -23,57 +20,63 @@
   box-sizing: border-box;
 }
 
+/* Tarjeta flotante principal */
 .reservar-card {
-  background: #1a100a;
-  border-top: 3px solid #f1c40f;
-  border-radius: 12px;
+  background-color: #121212;
   width: 100%;
-  max-width: 520px;
-  padding: 25px;
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+  max-width: 440px;
+  border-radius: 14px;
+  border: 1px solid #3C280D; /* Mocha */
+  border-top: 4px solid #f1c40f; /* Acento Amarillo Llorona */
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.85);
+  padding: 24px 20px;
   box-sizing: border-box;
+  animation: fadeIn 0.35s ease-out both;
 }
 
+/* Encabezado y logo integrado */
 .reservar-header {
   text-align: center;
   margin-bottom: 20px;
 
   .logo-box {
-    background: #2b170c;
-    width: 100px;
-    height: 100px;
+    width: 95px;
+    height: 95px;
     margin: 0 auto 14px auto;
     border-radius: 10px;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px;
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+    background: transparent;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 
     .brand-logo {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      border-radius: 6px;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 10px;
+      display: block;
     }
   }
 
   .brand-title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 800;
     color: #f1c40f;
-    letter-spacing: 1px;
+    font-size: 13px;
+    font-weight: 800;
     text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin: 0;
+    text-align: center;
   }
 }
 
+/* Fila de campos en 2 columnas */
 .form-row {
   display: flex;
   gap: 12px;
-  margin-bottom: 0;
 
-  @media (max-width: 520px) {
+  @media (max-width: 480px) {
     flex-direction: column;
     gap: 0;
   }
@@ -83,108 +86,158 @@
   }
 }
 
+/* Grupos y etiquetas */
 .form-group {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 
   label {
     display: block;
-    font-size: 11px;
+    font-size: 10.5px;
     font-weight: 700;
-    color: #a0aec0;
-    letter-spacing: 1px;
-    margin-bottom: 6px;
+    color: #9A7B4F; /* Tortilla */
+    letter-spacing: 0.8px;
     text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+}
+
+/* Contenedores de inputs */
+.input-wrapper {
+  display: flex;
+  align-items: center;
+  background-color: #231709; /* Brown oscuro */
+  border: 1px solid #371D10; /* Hickory */
+  border-radius: 6px;
+  height: 42px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+
+  ion-icon {
+    color: #795C34; /* Peanut */
+    font-size: 17px;
+    margin-right: 10px;
+    flex-shrink: 0;
+    transition: color 0.2s ease;
   }
 
-  .input-wrapper {
+  /* Inputs tipo fecha y hora */
+  input {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent !important;
+    color: #ffffff !important;
+    font-size: 13.5px;
+    color-scheme: dark;
+    padding: 0;
+    margin: 0;
+
+    &::placeholder {
+      color: #8c9099 !important; /* Gris claro */
+    }
+  }
+
+  /* Inputs y Textareas de Ionic */
+  ion-input, 
+  ion-textarea {
+    --background: transparent !important;
+    --color: #ffffff !important;
+    --placeholder-color: #8c9099 !important; /* Gris claro visible */
+    --placeholder-opacity: 1 !important;
+    --padding-start: 0 !important;
+    --padding-end: 0 !important;
+    --padding-top: 0 !important;
+    --padding-bottom: 0 !important;
+    --highlight-color-focused: transparent !important;
+    font-size: 13.5px;
+    width: 100%;
+    margin: 0;
+  }
+
+  /* Selector de Zona */
+  ion-select {
+    --background: transparent !important;
+    --color: #ffffff !important;
+    --placeholder-color: #8c9099 !important; /* Gris claro */
+    --placeholder-opacity: 1 !important;
+    --padding-start: 0 !important;
+    --padding-end: 0 !important;
+    --padding-top: 0 !important;
+    --padding-bottom: 0 !important;
+    --highlight-color-focused: transparent !important;
+    width: 100%;
+    height: 100%;
     display: flex;
     align-items: center;
-    background: #251710;
-    border: 1px solid #3d281c;
-    border-radius: 6px;
-    padding: 0 12px;
-    min-height: 44px;
-    transition: all 0.2s ease;
+    font-size: 13.5px;
+    margin: 0;
+
+    &::part(text),
+    &::part(placeholder) {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      padding-top: 2px;
+    }
+
+    &::part(icon) {
+      color: #795C34; /* Peanut */
+      font-size: 15px;
+      margin-top: 2px;
+    }
+  }
+
+  /* Estado enfocado */
+  &:focus-within {
+    border-color: #f1c40f;
+    background-color: #1e1308;
+    box-shadow: 0 0 0 1px #f1c40f;
 
     ion-icon {
-      color: #a0aec0;
-      font-size: 18px;
-      margin-right: 10px;
-      flex-shrink: 0;
+      color: #f1c40f;
     }
+  }
 
-    input, select {
-      width: 100%;
-      border: none;
-      background: transparent !important;
-      color: #ffffff !important;
-      font-size: 14px;
-      outline: none;
-      color-scheme: dark;
-    }
+  /* Área de texto */
+  &.textarea-wrapper {
+    height: auto;
+    min-height: 70px;
+    align-items: flex-start;
+    padding: 10px 12px;
 
-    ion-input, ion-textarea, ion-select {
-      --color: #ffffff;
-      --placeholder-color: #635347;
-      --placeholder-opacity: 1;
-      --padding-start: 0;
-      --padding-end: 0;
-      --padding-top: 0;
-      --padding-bottom: 0;
-      font-size: 14px;
-      width: 100%;
-    }
-
-    ion-select {
-      width: 100%;
-      justify-content: flex-start;
-    }
-
-    &:focus-within {
-      border-color: #f1c40f;
-      box-shadow: 0 0 0 2px rgba(241, 196, 15, 0.2);
-
-      ion-icon {
-        color: #f1c40f;
-      }
-    }
-
-    &.textarea-wrapper {
-      min-height: auto;
-      padding: 10px 12px;
-      align-items: flex-start;
-
-      ion-icon {
-        margin-top: 2px;
-      }
+    ion-icon {
+      margin-top: 3px;
     }
   }
 }
 
+/* Divisor horizontal */
 .divider {
-  border: none;
-  border-top: 1px solid #2d1a10;
-  margin: 18px 0;
+  border: 0;
+  border-top: 1px solid #371D10; /* Hickory */
+  margin: 14px 0 10px 0;
 }
 
+/* Alerta para grupos grandes */
 .aviso-grupo-box {
-  margin: 10px 0 16px 0;
-  padding: 14px;
-  background: rgba(241, 196, 15, 0.1);
-  border-left: 4px solid #f1c40f;
+  margin: 10px 0 14px 0;
+  padding: 12px;
+  background: rgba(241, 196, 15, 0.08);
+  border-left: 3px solid #f1c40f;
   border-radius: 6px;
 
   h4 {
-    margin: 0 0 6px 0;
-    font-size: 13.5px;
+    margin: 0 0 4px 0;
+    font-size: 12px;
     font-weight: bold;
     color: #f1c40f;
   }
 
   p {
-    margin: 0 0 12px 0;
-    font-size: 12px;
-    color: #ffffff;
+    margin: 0 0 10px 0;
+    font-size: 11.5px;
+    color: #e2dcd5;
     line-height: 1.4;
   }
 
@@ -195,21 +248,22 @@
 
     a {
       flex: 1;
-      min-width: 130px;
+      min-width: 110px;
       text-decoration: none;
       color: #ffffff;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 5px;
+      font-size: 11px;
       font-weight: bold;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 5px;
 
       &.btn-llamada {
-        background: #2c3e50;
+        background: #371D10; /* Hickory */
       }
+
       &.btn-whatsapp {
         background: #25d366;
       }
@@ -217,45 +271,65 @@
   }
 }
 
-.btn-submit {
-  width: 100%;
-  height: 46px;
-  background: #f1c40f;
-  color: #1a100a;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
+/* Pie y botón de confirmación */
+.reservar-footer {
+  margin-top: 16px;
 
-  &:hover {
-    background: #f3d23e;
-    transform: translateY(-1px);
+  .btn-submit {
+    width: 100%;
+    height: 44px;
+    background: #f1c40f;
+    color: #000000;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(241, 196, 15, 0.25);
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: #f8cf28;
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
   }
 
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+  .aviso-footer {
+    text-align: center;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    border: 1px solid #371D10; /* Hickory */
+
+    p {
+      margin: 0;
+      font-size: 11.5px;
+      color: #9A7B4F; /* Tortilla */
+    }
   }
 }
 
-.aviso-footer {
-  text-align: center;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  margin-top: 10px;
-
-  p {
-    margin: 0;
-    font-size: 13px;
-    color: #ffffff;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
