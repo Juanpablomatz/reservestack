@@ -19,11 +19,10 @@ declare var io: any;
 })
 export class RosaPage implements AfterViewInit, OnDestroy {
 
-  // PLANO MAESTRO FISICO DE ROSA MEXICANO (4 ZONAS)
   readonly PLANO_DEFECTO: any = {
     'Terraza': [{id:1,c:4},{id:2,c:4},{id:3,c:4},{id:4,c:4}],
     'Piso': [{id:10,c:4},{id:11,c:4},{id:12,c:4},{id:13,c:4},{id:14,c:4}],
-    'Jardin': [{id:20,c:4},{id:21,c:4},{id:22,c:4},{id:23,c:4}],
+    'Jardín': [{id:20,c:4},{id:21,c:4},{id:22,c:4},{id:23,c:4}],
     'Cava': [{id:30,c:4},{id:31,c:4},{id:32,c:4}]
   };
 
@@ -95,6 +94,23 @@ export class RosaPage implements AfterViewInit, OnDestroy {
   tieneMesasValidas(obj: any): boolean {
     if (!obj || typeof obj !== 'object') return false;
     return Object.values(obj).some((arr: any) => Array.isArray(arr) && arr.length > 0);
+  }
+
+  limpiarTexto(txt: string): string {
+    return (txt || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  }
+
+  obtenerMesasDeZona(nombreZona: string): any[] {
+    if (!this.restaurante) return [];
+    if (this.restaurante[nombreZona]) return this.restaurante[nombreZona];
+    
+    const keyLimpia = this.limpiarTexto(nombreZona);
+    for (const z in this.restaurante) {
+      if (this.limpiarTexto(z) === keyLimpia) {
+        return this.restaurante[z] || [];
+      }
+    }
+    return [];
   }
 
   cargarReservasDesdeCache() {
@@ -229,6 +245,15 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         if (this.tieneMesasValidas(data)) {
           this.disenoMaestro = data;
           this.cargarLayoutPorFecha(this.fechaSeleccionada);
+          
+          const zonas = Object.keys(data);
+          if (zonas.length > 0) {
+            const existeActiva = zonas.some(z => this.limpiarTexto(z) === this.limpiarTexto(this.zonaActiva));
+            if (!existeActiva) {
+              this.zonaActiva = zonas[0];
+            }
+          }
+
           this.dibujarMesas(this.zonaActiva);
           this.actualizarVistaCompleta();
           return;
@@ -608,7 +633,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
     this.reintentosDibujo = 0;
     plano.innerHTML = '';
-    const mesas = this.restaurante[zona] || [];
+    const mesas = this.obtenerMesasDeZona(zona);
 
     mesas.forEach((mesa: any) => {
       const divMesa = document.createElement('div');
@@ -726,9 +751,13 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           divMesa.querySelector('.btn-delete-mesa')?.addEventListener('click', (e) => {
             e.stopPropagation();
             if (confirm(`Deseas eliminar la Mesa ${textoNumero}?`)) {
-              this.restaurante[zona] = this.restaurante[zona].filter((m: any) => m !== mesa && m.id !== mesa.id);
-              if (this.disenoMaestro && this.disenoMaestro[zona]) {
-                this.disenoMaestro[zona] = this.disenoMaestro[zona].filter((m: any) => m !== mesa && m.id !== mesa.id);
+              for (const z in this.restaurante) {
+                this.restaurante[z] = this.restaurante[z].filter((m: any) => m !== mesa && m.id !== mesa.id);
+              }
+              if (this.disenoMaestro) {
+                for (const z in this.disenoMaestro) {
+                  this.disenoMaestro[z] = this.disenoMaestro[z].filter((m: any) => m !== mesa && m.id !== mesa.id);
+                }
               }
               this.mesaSeleccionadaEdicion = null;
               this.guardarLayoutFechaActual();
@@ -776,6 +805,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       ]
     };
 
+    if (!this.restaurante[zona]) this.restaurante[zona] = [];
     this.restaurante[zona] = this.restaurante[zona].filter((m: any) => m.id !== mesaA.id && m.id !== mesaB.id);
     this.restaurante[zona].push(mesaFusionada);
 
@@ -784,17 +814,17 @@ export class RosaPage implements AfterViewInit, OnDestroy {
         await this.guardarDisenoPermanente();
       } catch (error) {
         this.disenoMaestro = JSON.parse(JSON.stringify(this.restaurante));
-        console.warn('La fusion permanente no se pudo sincronizar con el servidor.', error);
       }
     } else {
       this.guardarLayoutFechaActual();
-      this.modoEdicion = false;
-      this.modoCombinar = false;
-      this.mesaACombinar = null;
-      this.mesaSeleccionadaEdicion = null;
-      document.getElementById('toolbar-editor')?.classList.add('oculto');
-      document.getElementById('aviso-combinar')?.classList.add('oculto');
     }
+
+    this.modoEdicion = false;
+    this.modoCombinar = false;
+    this.mesaACombinar = null;
+    this.mesaSeleccionadaEdicion = null;
+    document.getElementById('toolbar-editor')?.classList.add('oculto');
+    document.getElementById('aviso-combinar')?.classList.add('oculto');
 
     alert(`Mesas fusionadas con exito como Mesa ${mesaFusionada.displayId}.`);
     this.dibujarMesas(zona);
@@ -808,9 +838,11 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     if (confirm(`Deseas desvincular la Mesa ${textoNombre} y restaurar las mesas originales?`)) {
       const zona = this.zonaActiva;
 
-      const indiceRestaurante = this.restaurante[zona].findIndex((m: any) => m === mesa || m.id === mesa.id);
-      if (indiceRestaurante !== -1) {
-        this.restaurante[zona].splice(indiceRestaurante, 1);
+      if (this.restaurante[zona]) {
+        const indiceRestaurante = this.restaurante[zona].findIndex((m: any) => m === mesa || m.id === mesa.id);
+        if (indiceRestaurante !== -1) {
+          this.restaurante[zona].splice(indiceRestaurante, 1);
+        }
       }
 
       if (this.disenoMaestro && this.disenoMaestro[zona]) {
@@ -823,6 +855,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       mesa.originalTables.forEach((orig: any) => {
         const copiaOriginal = JSON.parse(JSON.stringify(orig));
         
+        if (!this.restaurante[zona]) this.restaurante[zona] = [];
         const existeEnRestaurante = this.restaurante[zona].some((m: any) => m.id === copiaOriginal.id);
         if (!existeEnRestaurante) {
           this.restaurante[zona].push(copiaOriginal);
@@ -923,7 +956,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     
     reservas.forEach(res => {
       if (res.idMesa && res.estado !== 'finalizada' && res.estado !== 'cancelada' && res.estado !== 'liberada') {
-        const mesasDeZona = this.restaurante[this.zonaActiva] || [];
+        const mesasDeZona = this.obtenerMesasDeZona(this.zonaActiva);
         const mesaFisicaMacheada = mesasDeZona.find((m: any) => this.reservaPerteneceAMesa(res, m));
         if (mesaFisicaMacheada) {
           if (!mesasAgrupadas[mesaFisicaMacheada.id]) mesasAgrupadas[mesaFisicaMacheada.id] = [];
@@ -992,7 +1025,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       item.innerHTML = `
         <div class="reserva-info-left"><strong>${res.nombre}</strong></div>
         <div class="reserva-info-right">
-          ${res.personas}p • Mesa ${res.idMesa}
+          ${res.personas}p • Mesa ${res.idMesa || ''}
           <i class="fas fa-info-circle icono-mas-info" style="margin-left: 8px; color: rgba(255,255,255,0.45); cursor: pointer;"></i>
         </div>`;
       item.addEventListener('click', () => this.mostrarDetalleReserva(res));
@@ -1011,7 +1044,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
           item.innerHTML = `
             <div class="reserva-info-left"><strong style="text-decoration: line-through;">${res.nombre}</strong></div>
             <div class="reserva-info-right">
-              ${res.personas}p • Mesa ${res.idMesa}
+              ${res.personas}p • Mesa ${res.idMesa || ''}
               <i class="fas fa-info-circle icono-mas-info" style="margin-left: 8px; color: rgba(255,255,255,0.3); cursor: pointer;"></i>
             </div>`;
           item.addEventListener('click', () => this.mostrarDetalleReserva(res));
@@ -1554,9 +1587,17 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     if (inputHora) inputHora.value = new Date().toTimeString().substring(0,5);
     
     const selectZona = document.getElementById('res-zona') as HTMLSelectElement;
-    if (selectZona) selectZona.value = zonaPredeterminada;
+    if (selectZona) {
+      selectZona.innerHTML = '';
+      Object.keys(this.restaurante).forEach(z => {
+        selectZona.innerHTML += `<option value="${z}">${z.toUpperCase()}</option>`;
+      });
+
+      const zonaMatch = Object.keys(this.restaurante).find(z => this.limpiarTexto(z) === this.limpiarTexto(zonaPredeterminada));
+      selectZona.value = zonaMatch || (Object.keys(this.restaurante)[0] || 'Terraza');
+    }
     
-    this.actualizarSelectMesas(zonaPredeterminada, mesaPreseleccionada);
+    this.actualizarSelectMesas(selectZona ? selectZona.value : zonaPredeterminada, mesaPreseleccionada);
     if (modal) modal.classList.remove('oculto');
   }
 
@@ -1596,8 +1637,16 @@ export class RosaPage implements AfterViewInit, OnDestroy {
       setVal('res-email', reserva.email);
 
       const selectZona = document.getElementById('res-zona') as HTMLSelectElement;
-      if (selectZona && reserva.zona) {
-        selectZona.value = reserva.zona;
+      if (selectZona) {
+        selectZona.innerHTML = '';
+        Object.keys(this.restaurante).forEach(z => {
+          selectZona.innerHTML += `<option value="${z}">${z.toUpperCase()}</option>`;
+        });
+
+        const zonaMatch = Object.keys(this.restaurante).find(z => this.limpiarTexto(z) === this.limpiarTexto(reserva.zona));
+        if (zonaMatch) {
+          selectZona.value = zonaMatch;
+        }
         this.actualizarSelectMesas(selectZona.value, reserva.idMesa);
       }
       
@@ -1612,7 +1661,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     const selectMesa = document.getElementById('res-mesa') as HTMLSelectElement;
     if(!selectMesa) return;
     selectMesa.innerHTML = '';
-    const mesas = this.restaurante[zona] || [];
+    const mesas = this.obtenerMesasDeZona(zona);
 
     mesas.forEach((m: any) => {
       const valorOpcion = m.displayId || m.id.toString();
@@ -1757,7 +1806,7 @@ export class RosaPage implements AfterViewInit, OnDestroy {
 
     actualizarTxt('popup-nombre', reserva.nombre);
     actualizarTxt('popup-personas', reserva.personas);
-    actualizarTxt('popup-mesa', reserva.idMesa);
+    actualizarTxt('popup-mesa', reserva.idMesa || '');
     actualizarTxt('popup-fecha', reserva.fecha);       
     actualizarTxt('popup-hora', horaFormat);           
     actualizarTxt('popup-zona', reserva.zona);
@@ -1914,13 +1963,16 @@ export class RosaPage implements AfterViewInit, OnDestroy {
     const zonasConteo: { [key: string]: number } = {
       'Terraza': 0,
       'Piso': 0,
-      'Jardin': 0,
+      'Jardín': 0,
       'Cava': 0
     };
 
     efectivas.forEach(r => {
-      if (r.zona && zonasConteo[r.zona] !== undefined) {
-        zonasConteo[r.zona] += parseInt(r.personas || 0, 10);
+      if (r.zona) {
+        const keyMatch = Object.keys(zonasConteo).find(z => this.limpiarTexto(z) === this.limpiarTexto(r.zona));
+        if (keyMatch) {
+          zonasConteo[keyMatch] += parseInt(r.personas || 0, 10);
+        }
       }
     });
 
