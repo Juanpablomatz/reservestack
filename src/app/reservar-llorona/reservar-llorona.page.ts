@@ -11,13 +11,13 @@ import {
   calendarOutline, 
   timeOutline, 
   peopleOutline, 
+  callOutline, 
+  logoWhatsapp, 
   restaurantOutline, 
   personOutline, 
-  callOutline, 
   mailOutline, 
-  documentTextOutline,
-  gridOutline,
-  logoWhatsapp 
+  documentTextOutline, 
+  gridOutline 
 } from 'ionicons/icons';
 
 @Component({
@@ -121,11 +121,15 @@ export class ReservarLloronaPage implements OnInit {
       }
     }
     
-    // Si viene en formato YYYY-MM-DD
+    // Si viene en formato DD-MM-YYYY
     if (limpia.includes('-')) {
       const partes = limpia.split('-');
-      if (partes.length === 3 && partes[0].length === 4) {
-        return limpia;
+      if (partes.length === 3) {
+        if (partes[0].length === 4) {
+          return limpia; // YYYY-MM-DD
+        } else if (partes[2].length === 4) {
+          return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+        }
       }
     }
 
@@ -153,17 +157,19 @@ export class ReservarLloronaPage implements OnInit {
     return '16:00';
   }
 
-  alCambiarFechaOHora() {
-    if (!this.fecha) {
-      this.fecha = this.todayDate;
-      return;
+  // Permite seleccionar cualquier fecha sin resetear a todayDate
+  alCambiarFechaOHora(event?: any) {
+    const val = event?.detail?.value || event?.target?.value || this.fecha;
+    if (val) {
+      this.fecha = this.normalizarAFechaISO(val);
     }
-    
-    const fechaISO = this.normalizarAFechaISO(this.fecha);
-    if (fechaISO < this.todayDate) {
-      this.fecha = this.todayDate;
-    } else {
-      this.fecha = fechaISO;
+  }
+
+  // Permite seleccionar cualquier hora sin restricciones en el picker
+  alCambiarHora(event?: any) {
+    const val = event?.detail?.value || event?.target?.value || this.hora;
+    if (val) {
+      this.hora = val.toString();
     }
   }
 

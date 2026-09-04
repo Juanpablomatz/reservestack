@@ -1,37 +1,47 @@
 <ion-content class="fondo-pantalla">
-  <div class="reservar-container">
-    <div class="reservar-card">
-      <div class="reservar-header">
-        <div class="logo-box">
-          <img src="assets/imgllorona.jpg" alt="Llorona Comedor" class="brand-logo" />
-        </div>
-        <h2 class="brand-title">NUEVA RESERVA</h2>
+  <div class="contenedor-centrado">
+    <div class="form-container">
+      <!-- Logo Llorona Comedor -->
+      <div class="logo-container">
+        <img src="assets/imgllorona.png" class="logo-img" alt="Llorona Comedor" />
       </div>
-
-      <form (ngSubmit)="confirmarReservacion()" class="reservar-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label>FECHA DE VISITA</label>
+      
+      <!-- Cuerpo del formulario -->
+      <div class="form-body">
+        <h3>Reserva tu Mesa en Llorona Comedor</h3>
+        
+        <!-- Fila Fecha y Hora -->
+        <div class="row-inputs">
+          <div class="column-input">
+            <label class="label-texto">Fecha de visita</label>
             <div class="input-wrapper">
-              <ion-icon name="calendar-outline"></ion-icon>
-              <input type="date" [(ngModel)]="fecha" name="fecha" [min]="todayDate" (change)="alCambiarFechaOHora()" required />
+              <ion-icon name="calendar-outline" class="icono-input"></ion-icon>
+              <input 
+                type="date" 
+                [min]="todayDate" 
+                class="input-limpio" 
+                [(ngModel)]="fecha" 
+                style="color-scheme: dark; width: 100%; background: transparent; border: none; outline: none; color: #ffffff; font-size: 14px;" />
             </div>
           </div>
-          <div class="form-group">
-            <label>HORA</label>
+          <div class="column-input">
+            <label class="label-texto">Hora</label>
             <div class="input-wrapper">
-              <ion-icon name="time-outline"></ion-icon>
-              <input type="time" [(ngModel)]="hora" name="hora" (change)="alCambiarFechaOHora()" required />
+              <ion-icon name="time-outline" class="icono-input"></ion-icon>
+              <input 
+                type="time" 
+                class="input-limpio" 
+                [(ngModel)]="hora" 
+                style="color-scheme: dark; width: 100%; background: transparent; border: none; outline: none; color: #ffffff; font-size: 14px;" />
             </div>
           </div>
         </div>
 
-        <div class="form-group">
-          <label>NUMERO DE PERSONAS</label>
-          <div class="input-wrapper">
-            <ion-icon name="people-outline"></ion-icon>
-            <input type="number" [(ngModel)]="personas" name="personas" min="1" max="50" (change)="alCambiarPersonas()" required placeholder="Ej. 4 personas" />
-          </div>
+        <!-- Numero de Personas -->
+        <label class="label-texto">Numero de Personas</label>
+        <div class="input-wrapper">
+          <ion-icon name="people-outline" class="icono-input"></ion-icon>
+          <ion-input type="number" min="1" max="50" placeholder="Ej. 4 personas" class="input-limpio" [(ngModel)]="personas" (ionChange)="alCambiarPersonas()"></ion-input>
         </div>
 
         <!-- Aviso dinamico para grupos de 15 o mas personas -->
@@ -49,70 +59,77 @@
             </a>
           </div>
         </div>
-
-        <div class="form-group" style="margin-top: 12px;">
-          <label>ZONA DE PREFERENCIA</label>
-          <div class="input-wrapper select-wrapper">
-            <ion-icon name="restaurant-outline"></ion-icon>
-            <select [(ngModel)]="zona" name="zona" required>
-              <option *ngFor="let z of zonasDisponibles" [value]="z">{{ z | uppercase }}</option>
-            </select>
-          </div>
+        
+        <!-- Area de Preferencia -->
+        <label class="label-texto" style="margin-top: 12px;">Zona de preferencia</label>
+        <div class="input-wrapper">
+          <ion-icon name="restaurant-outline" class="icono-input"></ion-icon>
+          <ion-select placeholder="Selecciona el area..." class="input-limpio" [(ngModel)]="zona" interface="popover">
+            <ion-select-option *ngFor="let z of zonasDisponibles" [value]="z">{{ z.toUpperCase() }}</ion-select-option>
+          </ion-select>
         </div>
 
-        <div class="form-row" style="margin-top: 20px;">
-          <div class="form-group">
-            <label>NOMBRE</label>
+        <hr class="divider" />
+
+        <!-- Fila Nombre y Apellido -->
+        <div class="row-inputs">
+          <div class="column-input">
+            <label class="label-texto">Nombre</label>
             <div class="input-wrapper">
-              <ion-icon name="person-outline"></ion-icon>
-              <input type="text" [(ngModel)]="nombre" name="nombre" placeholder="Ej. Juan" required />
+              <ion-icon name="person-outline" class="icono-input"></ion-icon>
+              <ion-input type="text" placeholder="Ej. Juan" class="input-limpio" [(ngModel)]="nombre"></ion-input>
             </div>
           </div>
-          <div class="form-group">
-            <label>APELLIDO</label>
+          <div class="column-input">
+            <label class="label-texto">Apellido</label>
             <div class="input-wrapper">
-              <ion-icon name="person-outline"></ion-icon>
-              <input type="text" [(ngModel)]="apellido" name="apellido" placeholder="Ej. Perez" required />
+              <ion-icon name="person-outline" class="icono-input"></ion-icon>
+              <ion-input type="text" placeholder="Ej. Perez" class="input-limpio" [(ngModel)]="apellido"></ion-input>
             </div>
           </div>
         </div>
 
-        <div class="form-group">
-          <label>NUMERO DE TELEFONO</label>
-          <div class="input-wrapper">
-            <ion-icon name="call-outline"></ion-icon>
-            <input type="tel" [(ngModel)]="telefono" name="telefono" (input)="limpiarTelefono($event)" maxlength="10" placeholder="Ej. 5512345678 (10 digitos)" />
-          </div>
+        <!-- Telefono -->
+        <label class="label-texto">Numero de Telefono</label>
+        <div class="input-wrapper">
+          <ion-icon name="call-outline" class="icono-input"></ion-icon>
+          <ion-input type="tel" maxlength="10" placeholder="Ej. 5512345678 (10 digitos)" class="input-limpio" [(ngModel)]="telefono" (ionInput)="limpiarTelefono($event)"></ion-input>
         </div>
 
-        <div class="form-group">
-          <label>CORREO ELECTRONICO</label>
-          <div class="input-wrapper">
-            <ion-icon name="mail-outline"></ion-icon>
-            <input type="email" [(ngModel)]="email" name="email" placeholder="ejemplo@correo.com" />
-          </div>
+        <!-- Email -->
+        <label class="label-texto">Correo Electronico</label>
+        <div class="input-wrapper">
+          <ion-icon name="mail-outline" class="icono-input"></ion-icon>
+          <ion-input type="email" placeholder="Ej. juan@correo.com" class="input-limpio" [(ngModel)]="email"></ion-input>
         </div>
 
-        <div class="form-group">
-          <label>NOTAS O PETICIONES ESPECIALES</label>
-          <div class="input-wrapper textarea-wrapper">
-            <ion-icon name="document-text-outline"></ion-icon>
-            <textarea [(ngModel)]="nota" name="nota" rows="2" placeholder="Alergias, aniversarios, celebracion especial..."></textarea>
-          </div>
+        <!-- Notas Especiales -->
+        <label class="label-texto">Notas Especiales</label>
+        <div class="input-wrapper textarea-wrapper">
+          <ion-icon name="document-text-outline" class="icono-input"></ion-icon>
+          <ion-textarea placeholder="Ej. Alergia al gluten, celebracion especial, etc." class="input-limpio" [(ngModel)]="nota"></ion-textarea>
         </div>
-
-        <!-- Boton de envio -->
-        <button *ngIf="personas < 15" type="submit" [disabled]="cargando" class="btn-submit">
+      </div>
+      
+      <!-- Footer -->
+      <div class="form-footer">
+        <ion-button 
+          *ngIf="personas < 15"
+          expand="block" 
+          class="btn-guardar" 
+          [disabled]="cargando" 
+          (click)="confirmarReservacion()">
+          <ion-spinner *ngIf="cargando" name="crescent" style="margin-right: 8px; color: white;"></ion-spinner>
           <span *ngIf="!cargando">CONFIRMAR RESERVACION</span>
-          <span *ngIf="cargando"><i class="fas fa-spinner fa-spin"></i> PROCESANDO RESERVACION...</span>
-        </button>
+          <span *ngIf="cargando">PROCESANDO RESERVACION...</span>
+        </ion-button>
 
-        <div *ngIf="personas >= 15" style="text-align: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-top: 15px;">
+        <div *ngIf="personas >= 15" style="text-align: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
           <p style="margin: 0; font-size: 13px; color: #ffffff;">
-            Para confirmar este grupo grande, utiliza los botones de <strong>Llamada</strong> o <strong>WhatsApp</strong> de arriba.
+            Para confirmar este grupo, utiliza los botones de <strong>Llamada</strong> o <strong>WhatsApp</strong> de arriba.
           </p>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 </ion-content>
