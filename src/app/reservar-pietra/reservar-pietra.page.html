@@ -16,15 +16,23 @@
             <label class="label-texto">Fecha de visita</label>
             <div class="input-wrapper">
               <ion-icon name="calendar-outline" class="icono-input"></ion-icon>
-              <!-- Bloquea automaticamente dias del pasado -->
-              <ion-input type="date" [min]="todayDate" class="input-limpio" [(ngModel)]="fecha" (ionChange)="alCambiarFechaOHora()"></ion-input>
+              <input 
+                type="date" 
+                [min]="todayDate" 
+                class="input-limpio" 
+                [(ngModel)]="fecha" 
+                style="color-scheme: dark; width: 100%; background: transparent; border: none; outline: none; color: #ffffff; font-size: 14px;" />
             </div>
           </div>
           <div class="column-input">
             <label class="label-texto">Hora</label>
             <div class="input-wrapper">
               <ion-icon name="time-outline" class="icono-input"></ion-icon>
-              <ion-input type="time" class="input-limpio" [(ngModel)]="hora" (ionChange)="alCambiarFechaOHora()"></ion-input>
+              <input 
+                type="time" 
+                class="input-limpio" 
+                [(ngModel)]="hora" 
+                style="color-scheme: dark; width: 100%; background: transparent; border: none; outline: none; color: #ffffff; font-size: 14px;" />
             </div>
           </div>
         </div>

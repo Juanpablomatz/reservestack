@@ -59,14 +59,11 @@ export class ReservarPietraPage implements OnInit {
   todayDate: string = ''; 
   cargando: boolean = false;
 
-  // Contacto oficial para eventos y grupos grandes
   readonly TEL_RECEPCION: string = '4493937923';
   readonly TEL_MOSTRADO: string = '449 393 79 23';
 
-  // Zonas de Pietra Cucina
   zonasDisponibles: string[] = ['Terraza', 'Nivel bajo', 'Nivel medio', 'Pared lloron'];
 
-  // Distribucion de respaldo
   restauranteLayout: any = {
     'Terraza': [{id:100,c:4},{id:101,c:4},{id:102,c:4},{id:103,c:4},{id:104,c:4},{id:105,c:4},{id:106,c:4}],
     'Nivel bajo': [{id:90,c:4},{id:91,c:4},{id:92,c:4}],
@@ -122,7 +119,6 @@ export class ReservarPietraPage implements OnInit {
     if (!valorFecha) return this.todayDate;
     const limpia = valorFecha.toString().trim().split('T')[0];
     
-    // Si viene en formato DD/MM/YYYY
     if (limpia.includes('/')) {
       const partes = limpia.split('/');
       if (partes.length === 3) {
@@ -133,11 +129,14 @@ export class ReservarPietraPage implements OnInit {
       }
     }
     
-    // Si viene en formato YYYY-MM-DD
     if (limpia.includes('-')) {
       const partes = limpia.split('-');
-      if (partes.length === 3 && partes[0].length === 4) {
-        return limpia;
+      if (partes.length === 3) {
+        if (partes[0].length === 4) {
+          return limpia;
+        } else if (partes[2].length === 4) {
+          return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+        }
       }
     }
 
@@ -165,17 +164,19 @@ export class ReservarPietraPage implements OnInit {
     return '15:00';
   }
 
-  alCambiarFechaOHora() {
-    if (!this.fecha) {
-      this.fecha = this.todayDate;
-      return;
+  // Permite seleccionar cualquier fecha sin resetear a todayDate
+  alCambiarFechaOHora(event?: any) {
+    const val = event?.detail?.value || event?.target?.value || this.fecha;
+    if (val) {
+      this.fecha = this.normalizarAFechaISO(val);
     }
-    
-    const fechaISO = this.normalizarAFechaISO(this.fecha);
-    if (fechaISO < this.todayDate) {
-      this.fecha = this.todayDate;
-    } else {
-      this.fecha = fechaISO;
+  }
+
+  // Permite seleccionar cualquier hora sin restricciones en el picker
+  alCambiarHora(event?: any) {
+    const val = event?.detail?.value || event?.target?.value || this.hora;
+    if (val) {
+      this.hora = val.toString();
     }
   }
 
