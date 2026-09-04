@@ -118,6 +118,32 @@ export class ReservarPietraPage implements OnInit {
     }
   }
 
+  normalizarAFechaISO(valorFecha: string): string {
+    if (!valorFecha) return this.todayDate;
+    const limpia = valorFecha.toString().trim().split('T')[0];
+    
+    // Si viene en formato DD/MM/YYYY
+    if (limpia.includes('/')) {
+      const partes = limpia.split('/');
+      if (partes.length === 3) {
+        const dia = partes[0].padStart(2, '0');
+        const mes = partes[1].padStart(2, '0');
+        const anio = partes[2];
+        return `${anio}-${mes}-${dia}`;
+      }
+    }
+    
+    // Si viene en formato YYYY-MM-DD
+    if (limpia.includes('-')) {
+      const partes = limpia.split('-');
+      if (partes.length === 3 && partes[0].length === 4) {
+        return limpia;
+      }
+    }
+
+    return limpia;
+  }
+
   normalizarHora(horaStr: string): string {
     if (!horaStr) return '15:00';
     const str = horaStr.toString().trim();
@@ -140,8 +166,16 @@ export class ReservarPietraPage implements OnInit {
   }
 
   alCambiarFechaOHora() {
-    if (this.fecha < this.todayDate) {
+    if (!this.fecha) {
       this.fecha = this.todayDate;
+      return;
+    }
+    
+    const fechaISO = this.normalizarAFechaISO(this.fecha);
+    if (fechaISO < this.todayDate) {
+      this.fecha = this.todayDate;
+    } else {
+      this.fecha = fechaISO;
     }
   }
 
@@ -190,8 +224,9 @@ export class ReservarPietraPage implements OnInit {
       return { valido: false, mensaje: 'Por favor selecciona fecha y hora.' };
     }
 
+    const fechaISO = this.normalizarAFechaISO(fechaStr);
     const horaNorm = this.normalizarHora(horaStr);
-    const [year, month, day] = fechaStr.split('-').map(Number);
+    const [year, month, day] = fechaISO.split('-').map(Number);
     const fechaObj = new Date(year, month - 1, day);
     const diaSemana = fechaObj.getDay(); 
 
@@ -206,7 +241,7 @@ export class ReservarPietraPage implements OnInit {
       };
     }
 
-    if (fechaStr === this.todayDate) {
+    if (fechaISO === this.todayDate) {
       const ahora = new Date();
       const horaActual = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
       if (horaNorm <= horaActual) {
@@ -222,13 +257,14 @@ export class ReservarPietraPage implements OnInit {
       const resp = await fetch(`${this.BASE_URL}/api/restaurantes/1/reservas`);
       const todasLasReservas = await resp.json();
 
+      const fechaISO = this.normalizarAFechaISO(this.fecha);
       const horaSolicitada = this.normalizarHora(this.hora);
       const [hS, mS] = horaSolicitada.split(':').map(Number);
       const minsSolicitados = (hS * 60) + mS;
 
       const reservasEnFecha = Array.isArray(todasLasReservas)
         ? todasLasReservas.filter((r: any) => 
-            r.fecha === this.fecha && 
+            r.fecha === fechaISO && 
             r.estado !== 'finalizada' && 
             r.estado !== 'cancelada' && 
             r.estado !== 'liberada'
@@ -333,8 +369,9 @@ export class ReservarPietraPage implements OnInit {
       return;
     }
 
+    const fechaISO = this.normalizarAFechaISO(this.fecha);
     const horaNormalizada = this.normalizarHora(this.hora);
-    const checkHorario = this.validarHorarioServicio(this.fecha, horaNormalizada);
+    const checkHorario = this.validarHorarioServicio(fechaISO, horaNormalizada);
     if (!checkHorario.valido) {
       alert(checkHorario.mensaje);
       return;
@@ -374,7 +411,7 @@ export class ReservarPietraPage implements OnInit {
 
       const payload = {
         idRestaurante: 1,
-        fecha: this.fecha,
+        fecha: fechaISO,
         hora: horaNormalizada,
         zona: this.zona,
         idMesa: idMesaAsignada,
