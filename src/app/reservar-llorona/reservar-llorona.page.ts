@@ -4,7 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { environment } from '../../environments/environment';
 import { 
   IonContent, 
-  IonIcon 
+  IonInput, 
+  IonSelect, 
+  IonSelectOption, 
+  IonTextarea, 
+  IonButton, 
+  IonIcon, 
+  IonSpinner 
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import { 
@@ -27,7 +33,13 @@ import {
   standalone: true,
   imports: [
     IonContent, 
+    IonInput, 
+    IonSelect, 
+    IonSelectOption, 
+    IonTextarea, 
+    IonButton, 
     IonIcon, 
+    IonSpinner, 
     CommonModule, 
     FormsModule
   ]
@@ -47,14 +59,11 @@ export class ReservarLloronaPage implements OnInit {
   todayDate: string = '';
   cargando: boolean = false;
 
-  // Contacto oficial para eventos y grupos grandes
   readonly TEL_RECEPCION: string = '4493937923';
   readonly TEL_MOSTRADO: string = '449 393 79 23';
 
-  // Zona unica oficial de Llorona Comedor
   zonasDisponibles: string[] = ['Piso'];
 
-  // Distribucion fisica de respaldo (Mesas 1 a 10)
   restauranteLayout: any = {
     'Piso': [
       {id:1,c:4},{id:2,c:4},{id:3,c:4},{id:4,c:4},{id:5,c:4},
@@ -110,7 +119,6 @@ export class ReservarLloronaPage implements OnInit {
     if (!valorFecha) return this.todayDate;
     const limpia = valorFecha.toString().trim().split('T')[0];
     
-    // Si viene en formato DD/MM/YYYY
     if (limpia.includes('/')) {
       const partes = limpia.split('/');
       if (partes.length === 3) {
@@ -121,12 +129,11 @@ export class ReservarLloronaPage implements OnInit {
       }
     }
     
-    // Si viene en formato DD-MM-YYYY
     if (limpia.includes('-')) {
       const partes = limpia.split('-');
       if (partes.length === 3) {
         if (partes[0].length === 4) {
-          return limpia; // YYYY-MM-DD
+          return limpia;
         } else if (partes[2].length === 4) {
           return `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
         }
@@ -157,7 +164,6 @@ export class ReservarLloronaPage implements OnInit {
     return '16:00';
   }
 
-  // Permite seleccionar cualquier fecha sin resetear a todayDate
   alCambiarFechaOHora(event?: any) {
     const val = event?.detail?.value || event?.target?.value || this.fecha;
     if (val) {
@@ -165,7 +171,6 @@ export class ReservarLloronaPage implements OnInit {
     }
   }
 
-  // Permite seleccionar cualquier hora sin restricciones en el picker
   alCambiarHora(event?: any) {
     const val = event?.detail?.value || event?.target?.value || this.hora;
     if (val) {
