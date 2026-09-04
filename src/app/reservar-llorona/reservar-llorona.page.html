@@ -1,124 +1,169 @@
 <ion-content class="fondo-pantalla">
-  <div class="contenedor-centrado">
-    <div class="form-container">
-      <div class="logo-container">
-        <img src="assets/imgllorona.png" class="logo-img" alt="Llorona Comedor" />
+  <div class="reservar-container">
+    <div class="reservar-card">
+      
+      <!-- Encabezado / Logo -->
+      <div class="reservar-header">
+        <div class="logo-box">
+          <img src="assets/imgllorona.png" class="brand-logo" alt="Llorona Comedor" />
+        </div>
+        <h3 class="brand-title">Reserva tu Mesa en Llorona Comedor</h3>
       </div>
 
-      <div class="form-body">
-        <h3>Reserva tu Mesa en Llorona Comedor</h3>
+      <!-- Cuerpo del Formulario -->
+      <div class="reservar-body">
         
-        <div class="row-inputs">
-          <div class="column-input">
-            <label class="label-texto">Fecha de visita</label>
+        <!-- Fecha y Hora en 2 columnas -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha de visita</label>
             <div class="input-wrapper">
-              <ion-icon name="calendar-outline" class="icono-input"></ion-icon>
+              <ion-icon name="calendar-outline"></ion-icon>
               <input 
                 type="date" 
                 [min]="todayDate" 
-                class="input-limpio" 
-                [(ngModel)]="fecha" 
-                style="color-scheme: dark; width: 100%; background: transparent; border: none; outline: none; color: #ffffff; font-size: 14px;" />
+                [(ngModel)]="fecha" />
             </div>
           </div>
-          <div class="column-input">
-            <label class="label-texto">Hora</label>
+
+          <div class="form-group">
+            <label>Hora</label>
             <div class="input-wrapper">
-              <ion-icon name="time-outline" class="icono-input"></ion-icon>
+              <ion-icon name="time-outline"></ion-icon>
               <input 
                 type="time" 
-                class="input-limpio" 
-                [(ngModel)]="hora" 
-                style="color-scheme: dark; width: 100%; background: transparent; border: none; outline: none; color: #ffffff; font-size: 14px;" />
+                [(ngModel)]="hora" />
             </div>
           </div>
         </div>
 
-        <label class="label-texto">Numero de Personas</label>
-        <div class="input-wrapper">
-          <ion-icon name="people-outline" class="icono-input"></ion-icon>
-          <ion-input type="number" min="1" max="50" placeholder="Ej. 4 personas" class="input-limpio" [(ngModel)]="personas" (ionChange)="alCambiarPersonas()"></ion-input>
+        <!-- Número de personas -->
+        <div class="form-group">
+          <label>Número de Personas</label>
+          <div class="input-wrapper">
+            <ion-icon name="people-outline"></ion-icon>
+            <ion-input 
+              type="number" 
+              min="1" 
+              max="50" 
+              placeholder="Ej. 4 personas" 
+              [(ngModel)]="personas" 
+              (ionChange)="alCambiarPersonas()">
+            </ion-input>
+          </div>
         </div>
 
-        <div *ngIf="personas >= 15" class="aviso-grupo-box" style="margin-top: 12px; padding: 14px; background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; border-radius: 6px;">
-          <h4 style="margin: 0 0 6px 0; font-size: 14px; font-weight: bold; color: #f1c40f;">Reservacion para grupos grandes</h4>
-          <p style="margin: 0 0 12px 0; font-size: 12.5px; color: #ffffff; line-height: 1.4;">
-            Para reservaciones de 15 personas o mas, te invitamos a comunicarte directamente con recepcion para coordinar el acomodo de mesas y brindarte atencion personalizada.
+        <!-- Alerta para grupos grandes -->
+        <div *ngIf="personas >= 15" class="aviso-grupo-box">
+          <h4>Reservación para grupos grandes</h4>
+          <p>
+            Para reservaciones de 15 personas o más, te invitamos a comunicarte directamente con recepción para coordinar el acomodo de mesas y brindarte atención personalizada.
           </p>
-          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <a [href]="enlaceLlamada" style="flex: 1; min-width: 130px; text-decoration: none; background: #2c3e50; color: #ffffff; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px;">
+          <div class="acciones-contacto">
+            <a [href]="enlaceLlamada" class="btn-llamada">
               <ion-icon name="call-outline"></ion-icon> Llamar {{ TEL_MOSTRADO }}
             </a>
-            <a [href]="enlaceWhatsapp" target="_blank" style="flex: 1; min-width: 130px; text-decoration: none; background: #25d366; color: #ffffff; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px;">
-              <ion-icon name="logo-whatsapp"></ion-icon> WhatsApp Recepcion
+            <a [href]="enlaceWhatsapp" target="_blank" class="btn-whatsapp">
+              <ion-icon name="logo-whatsapp"></ion-icon> WhatsApp Recepción
             </a>
           </div>
         </div>
         
-        <label class="label-texto" style="margin-top: 12px;">Zona de preferencia</label>
-        <div class="input-wrapper">
-          <ion-icon name="restaurant-outline" class="icono-input"></ion-icon>
-          <ion-select placeholder="Selecciona el area..." class="input-limpio" [(ngModel)]="zona" interface="popover">
-            <ion-select-option *ngFor="let z of zonasDisponibles" [value]="z">{{ z.toUpperCase() }}</ion-select-option>
-          </ion-select>
+        <!-- Zona de preferencia -->
+        <div class="form-group">
+          <label>Zona de preferencia</label>
+          <div class="input-wrapper">
+            <ion-icon name="restaurant-outline"></ion-icon>
+            <ion-select 
+              placeholder="Selecciona el área..." 
+              [(ngModel)]="zona" 
+              interface="popover">
+              <ion-select-option *ngFor="let z of zonasDisponibles" [value]="z">
+                {{ z.toUpperCase() }}
+              </ion-select-option>
+            </ion-select>
+          </div>
         </div>
 
         <hr class="divider" />
 
-        <div class="row-inputs">
-          <div class="column-input">
-            <label class="label-texto">Nombre</label>
+        <!-- Nombre y Apellido en 2 columnas -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre</label>
             <div class="input-wrapper">
-              <ion-icon name="person-outline" class="icono-input"></ion-icon>
-              <ion-input type="text" placeholder="Ej. Juan" class="input-limpio" [(ngModel)]="nombre"></ion-input>
+              <ion-icon name="person-outline"></ion-icon>
+              <ion-input type="text" placeholder="Ej. Juan" [(ngModel)]="nombre"></ion-input>
             </div>
           </div>
-          <div class="column-input">
-            <label class="label-texto">Apellido</label>
+
+          <div class="form-group">
+            <label>Apellido</label>
             <div class="input-wrapper">
-              <ion-icon name="person-outline" class="icono-input"></ion-icon>
-              <ion-input type="text" placeholder="Ej. Perez" class="input-limpio" [(ngModel)]="apellido"></ion-input>
+              <ion-icon name="person-outline"></ion-icon>
+              <ion-input type="text" placeholder="Ej. Perez" [(ngModel)]="apellido"></ion-input>
             </div>
           </div>
         </div>
 
-        <label class="label-texto">Numero de Telefono</label>
-        <div class="input-wrapper">
-          <ion-icon name="call-outline" class="icono-input"></ion-icon>
-          <ion-input type="tel" maxlength="10" placeholder="Ej. 5512345678 (10 digitos)" class="input-limpio" [(ngModel)]="telefono" (ionInput)="limpiarTelefono($event)"></ion-input>
+        <!-- Teléfono -->
+        <div class="form-group">
+          <label>Número de Teléfono</label>
+          <div class="input-wrapper">
+            <ion-icon name="call-outline"></ion-icon>
+            <ion-input 
+              type="tel" 
+              maxlength="10" 
+              placeholder="Ej. 5512345678 (10 dígitos)" 
+              [(ngModel)]="telefono" 
+              (ionInput)="limpiarTelefono($event)">
+            </ion-input>
+          </div>
         </div>
 
-        <label class="label-texto">Correo Electronico</label>
-        <div class="input-wrapper">
-          <ion-icon name="mail-outline" class="icono-input"></ion-icon>
-          <ion-input type="email" placeholder="Ej. juan@correo.com" class="input-limpio" [(ngModel)]="email"></ion-input>
+        <!-- Correo Electrónico -->
+        <div class="form-group">
+          <label>Correo Electrónico</label>
+          <div class="input-wrapper">
+            <ion-icon name="mail-outline"></ion-icon>
+            <ion-input type="email" placeholder="Ej. juan@correo.com" [(ngModel)]="email"></ion-input>
+          </div>
         </div>
 
-        <label class="label-texto">Notas Especiales</label>
-        <div class="input-wrapper textarea-wrapper">
-          <ion-icon name="document-text-outline" class="icono-input"></ion-icon>
-          <ion-textarea placeholder="Ej. Alergia al gluten, celebracion especial, etc." class="input-limpio" [(ngModel)]="nota"></ion-textarea>
+        <!-- Notas Especiales -->
+        <div class="form-group">
+          <label>Notas Especiales</label>
+          <div class="input-wrapper textarea-wrapper">
+            <ion-icon name="document-text-outline"></ion-icon>
+            <ion-textarea 
+              rows="3" 
+              placeholder="Ej. Alergia al gluten, celebración especial, etc." 
+              [(ngModel)]="nota">
+            </ion-textarea>
+          </div>
         </div>
+
       </div>
       
-      <div class="form-footer">
-        <ion-button 
+      <!-- Botón / Footer -->
+      <div class="reservar-footer">
+        <button 
           *ngIf="personas < 15"
-          expand="block" 
-          class="btn-guardar" 
+          class="btn-submit" 
           [disabled]="cargando" 
           (click)="confirmarReservacion()">
-          <ion-spinner *ngIf="cargando" name="crescent" style="margin-right: 8px; color: white;"></ion-spinner>
-          <span *ngIf="!cargando">CONFIRMAR RESERVACION</span>
-          <span *ngIf="cargando">PROCESANDO RESERVACION...</span>
-        </ion-button>
+          <ion-spinner *ngIf="cargando" name="crescent" style="margin-right: 8px; vertical-align: middle;"></ion-spinner>
+          <span *ngIf="!cargando">CONFIRMAR RESERVACIÓN</span>
+          <span *ngIf="cargando">PROCESANDO RESERVACIÓN...</span>
+        </button>
 
-        <div *ngIf="personas >= 15" style="text-align: center; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px;">
-          <p style="margin: 0; font-size: 13px; color: #ffffff;">
+        <div *ngIf="personas >= 15" class="aviso-footer">
+          <p>
             Para confirmar este grupo, utiliza los botones de <strong>Llamada</strong> o <strong>WhatsApp</strong> de arriba.
           </p>
         </div>
       </div>
+
     </div>
   </div>
 </ion-content>
