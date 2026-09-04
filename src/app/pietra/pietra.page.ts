@@ -96,6 +96,23 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     return Object.values(obj).some((arr: any) => Array.isArray(arr) && arr.length > 0);
   }
 
+  limpiarTexto(txt: string): string {
+    return (txt || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  }
+
+  obtenerMesasDeZona(nombreZona: string): any[] {
+    if (!this.restaurante || typeof this.restaurante !== 'object') return [];
+    if (this.restaurante[nombreZona]) return this.restaurante[nombreZona];
+    
+    const keyLimpia = this.limpiarTexto(nombreZona);
+    for (const z of Object.keys(this.restaurante)) {
+      if (this.limpiarTexto(z) === keyLimpia) {
+        return this.restaurante[z] || [];
+      }
+    }
+    return [];
+  }
+
   cargarReservasDesdeCache() {
     const cache = localStorage.getItem('pietra_reservas_cache');
     if (cache) {
@@ -232,6 +249,15 @@ export class PietraPage implements AfterViewInit, OnDestroy {
         if (this.tieneMesasValidas(data)) {
           this.disenoMaestro = data;
           this.cargarLayoutPorFecha(this.fechaSeleccionada);
+          
+          const zonas = Object.keys(data);
+          if (zonas.length > 0) {
+            const existeActiva = zonas.some(z => this.limpiarTexto(z) === this.limpiarTexto(this.zonaActiva));
+            if (!existeActiva) {
+              this.zonaActiva = zonas[0];
+            }
+          }
+
           this.dibujarMesas(this.zonaActiva);
           this.actualizarVistaCompleta();
           return;
@@ -264,9 +290,19 @@ export class PietraPage implements AfterViewInit, OnDestroy {
   }
 
   destruirGraficas() {
-    if (this.chartInstanceZonas) { this.chartInstanceZonas.destroy(); this.chartInstanceZonas = null; }
-    if (this.chartInstanceHorarios) { this.chartInstanceHorarios.destroy(); this.chartInstanceHorarios = null; }
-    if (this.chartInstanceOrigen) { this.chartInstanceOrigen.destroy(); this.chartInstanceOrigen = null; }
+    try {
+      const c1 = document.getElementById('grafica-zonas') as HTMLCanvasElement;
+      if (c1) Chart.getChart(c1)?.destroy();
+      if (this.chartInstanceZonas) { this.chartInstanceZonas.destroy(); this.chartInstanceZonas = null; }
+
+      const c2 = document.getElementById('grafica-horarios') as HTMLCanvasElement;
+      if (c2) Chart.getChart(c2)?.destroy();
+      if (this.chartInstanceHorarios) { this.chartInstanceHorarios.destroy(); this.chartInstanceHorarios = null; }
+
+      const c3 = document.getElementById('grafica-origen') as HTMLCanvasElement;
+      if (c3) Chart.getChart(c3)?.destroy();
+      if (this.chartInstanceOrigen) { this.chartInstanceOrigen.destroy(); this.chartInstanceOrigen = null; }
+    } catch (e) {}
   }
 
   asegurarCoordenadasGrid() {
@@ -345,7 +381,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
   limpiarNombresZonasViejas(datos: any[]) {
     return datos.map(r => {
       if (r.zona) {
-        const z = r.zona.toLowerCase().replace(/\s/g, '');
+        const z = this.limpiarTexto(r.zona);
         if (z === 'salon' || z === 'piso') r.zona = 'Nivel medio';
         if (z === 'plantabaja' || z === 'jardin') r.zona = 'Nivel bajo';
         if (z === 'cava') r.zona = 'Terraza';
@@ -623,7 +659,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
 
     this.reintentosDibujo = 0;
     plano.innerHTML = '';
-    const mesas = this.restaurante[zona] || [];
+    const mesas = this.obtenerMesasDeZona(zona);
 
     mesas.forEach((mesa: any) => {
       const divMesa = document.createElement('div');
@@ -741,9 +777,13 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           divMesa.querySelector('.btn-delete-mesa')?.addEventListener('click', (e) => {
             e.stopPropagation();
             if (confirm(`Deseas eliminar la Mesa ${textoNumero}?`)) {
-              this.restaurante[zona] = this.restaurante[zona].filter((m: any) => m !== mesa && m.id !== mesa.id);
-              if (this.disenoMaestro && this.disenoMaestro[zona]) {
-                this.disenoMaestro[zona] = this.disenoMaestro[zona].filter((m: any) => m !== mesa && m.id !== mesa.id);
+              for (const z in this.restaurante) {
+                this.restaurante[z] = this.restaurante[z].filter((m: any) => m !== mesa && m.id !== mesa.id);
+              }
+              if (this.disenoMaestro) {
+                for (const z in this.disenoMaestro) {
+                  this.disenoMaestro[z] = this.disenoMaestro[z].filter((m: any) => m !== mesa && m.id !== mesa.id);
+                }
               }
               this.mesaSeleccionadaEdicion = null;
               this.guardarLayoutFechaActual();
@@ -791,6 +831,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       ]
     };
 
+    if (!this.restaurante[zona]) this.restaurante[zona] = [];
     this.restaurante[zona] = this.restaurante[zona].filter((m: any) => m.id !== mesaA.id && m.id !== mesaB.id);
     this.restaurante[zona].push(mesaFusionada);
 
@@ -799,20 +840,21 @@ export class PietraPage implements AfterViewInit, OnDestroy {
         await this.guardarDisenoPermanente();
       } catch (error) {
         this.disenoMaestro = JSON.parse(JSON.stringify(this.restaurante));
-        console.warn('La fusion permanente no se pudo sincronizar con el servidor.', error);
       }
     } else {
       this.guardarLayoutFechaActual();
-      this.modoEdicion = false;
-      this.modoCombinar = false;
-      this.mesaACombinar = null;
-      this.mesaSeleccionadaEdicion = null;
-      document.getElementById('toolbar-editor')?.classList.add('oculto');
-      document.getElementById('aviso-combinar')?.classList.add('oculto');
     }
 
-    alert(`Mesas fusionadas con exito para Pietra Cucina como Mesa ${mesaFusionada.displayId}.`);
+    this.modoEdicion = false;
+    this.modoCombinar = false;
+    this.mesaACombinar = null;
+    this.mesaSeleccionadaEdicion = null;
+    document.getElementById('toolbar-editor')?.classList.add('oculto');
+    document.getElementById('aviso-combinar')?.classList.add('oculto');
+
+    alert(`Mesas fusionadas con exito como Mesa ${mesaFusionada.displayId}.`);
     this.dibujarMesas(zona);
+    this.actualizarVistaCompleta();
   }
 
   desvincularMesa(mesa: any) {
@@ -822,9 +864,11 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     if (confirm(`Deseas desvincular la Mesa ${textoNombre} y restaurar las mesas originales en Pietra Cucina?`)) {
       const zona = this.zonaActiva;
 
-      const indiceRestaurante = this.restaurante[zona].findIndex((m: any) => m === mesa || m.id === mesa.id);
-      if (indiceRestaurante !== -1) {
-        this.restaurante[zona].splice(indiceRestaurante, 1);
+      if (this.restaurante[zona]) {
+        const indiceRestaurante = this.restaurante[zona].findIndex((m: any) => m === mesa || m.id === mesa.id);
+        if (indiceRestaurante !== -1) {
+          this.restaurante[zona].splice(indiceRestaurante, 1);
+        }
       }
 
       if (this.disenoMaestro && this.disenoMaestro[zona]) {
@@ -837,6 +881,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       mesa.originalTables.forEach((orig: any) => {
         const copiaOriginal = JSON.parse(JSON.stringify(orig));
         
+        if (!this.restaurante[zona]) this.restaurante[zona] = [];
         const existeEnRestaurante = this.restaurante[zona].some((m: any) => m.id === copiaOriginal.id);
         if (!existeEnRestaurante) {
           this.restaurante[zona].push(copiaOriginal);
@@ -937,7 +982,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     
     reservas.forEach(res => {
       if (res.idMesa && res.estado !== 'finalizada' && res.estado !== 'cancelada' && res.estado !== 'liberada') {
-        const mesasDeZona = this.restaurante[this.zonaActiva] || [];
+        const mesasDeZona = this.obtenerMesasDeZona(this.zonaActiva);
         const mesaFisicaMacheada = mesasDeZona.find((m: any) => this.reservaPerteneceAMesa(res, m));
         if (mesaFisicaMacheada) {
           if (!mesasAgrupadas[mesaFisicaMacheada.id]) mesasAgrupadas[mesaFisicaMacheada.id] = [];
@@ -1006,7 +1051,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       item.innerHTML = `
         <div class="reserva-info-left"><strong>${res.nombre}</strong></div>
         <div class="reserva-info-right">
-          ${res.personas}p • Mesa ${res.idMesa}
+          ${res.personas}p • Mesa ${res.idMesa || ''}
           <i class="fas fa-info-circle icono-mas-info" style="margin-left: 8px; color: rgba(255,255,255,0.45); cursor: pointer;"></i>
         </div>`;
       item.addEventListener('click', () => this.mostrarDetalleReserva(res));
@@ -1031,7 +1076,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
           item.innerHTML = `
             <div class="reserva-info-left"><strong style="text-decoration: line-through;">${res.nombre}</strong></div>
             <div class="reserva-info-right">
-              ${res.personas}p • Mesa ${res.idMesa}
+              ${res.personas}p • Mesa ${res.idMesa || ''}
               <i class="fas fa-info-circle icono-mas-info" style="margin-left: 8px; color: rgba(255,255,255,0.3); cursor: pointer;"></i>
             </div>`;
           item.addEventListener('click', () => this.mostrarDetalleReserva(res));
@@ -1108,9 +1153,6 @@ export class PietraPage implements AfterViewInit, OnDestroy {
         const esPermanente = await this.solicitarTipoFusion();
         if (esPermanente === null) return;
         await this.fusionarMesas(this.mesaACombinar, mesa, esPermanente);
-        this.modoCombinar = false;
-        this.mesaACombinar = null;
-        document.getElementById('aviso-combinar')?.classList.add('oculto');
       }
       return; 
     }
@@ -1580,9 +1622,19 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     if (inputHora) inputHora.value = new Date().toTimeString().substring(0,5);
     
     const selectZona = document.getElementById('res-zona') as HTMLSelectElement;
-    if (selectZona) selectZona.value = zonaPredeterminada;
+    if (selectZona) {
+      selectZona.innerHTML = '';
+      const zonas = Object.keys(this.restaurante);
+      zonas.forEach(z => {
+        selectZona.innerHTML += `<option value="${z}">${z.toUpperCase()}</option>`;
+      });
+
+      const zonaMatch = zonas.find(z => this.limpiarTexto(z) === this.limpiarTexto(zonaPredeterminada));
+      selectZona.value = zonaMatch || (zonas[0] || 'Terraza');
+    }
     
-    this.actualizarSelectMesas(zonaPredeterminada, mesaPreseleccionada);
+    const zonaActual = selectZona ? selectZona.value : zonaPredeterminada;
+    this.actualizarSelectMesas(zonaActual, mesaPreseleccionada);
     if (modal) modal.classList.remove('oculto');
   }
 
@@ -1622,8 +1674,17 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       setVal('res-email', reserva.email);
 
       const selectZona = document.getElementById('res-zona') as HTMLSelectElement;
-      if (selectZona && reserva.zona) {
-        selectZona.value = reserva.zona;
+      if (selectZona) {
+        selectZona.innerHTML = '';
+        const zonas = Object.keys(this.restaurante);
+        zonas.forEach(z => {
+          selectZona.innerHTML += `<option value="${z}">${z.toUpperCase()}</option>`;
+        });
+
+        const zonaMatch = zonas.find(z => this.limpiarTexto(z) === this.limpiarTexto(reserva.zona));
+        if (zonaMatch) {
+          selectZona.value = zonaMatch;
+        }
         this.actualizarSelectMesas(selectZona.value, reserva.idMesa);
       }
       
@@ -1638,7 +1699,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     const selectMesa = document.getElementById('res-mesa') as HTMLSelectElement;
     if(!selectMesa) return;
     selectMesa.innerHTML = '';
-    const mesas = this.restaurante[zona] || [];
+    const mesas = this.obtenerMesasDeZona(zona);
 
     mesas.forEach((m: any) => {
       const valorOpcion = m.displayId || m.id.toString();
@@ -1783,7 +1844,7 @@ export class PietraPage implements AfterViewInit, OnDestroy {
 
     actualizarTxt('popup-nombre', reserva.nombre);
     actualizarTxt('popup-personas', reserva.personas);
-    actualizarTxt('popup-mesa', reserva.idMesa);
+    actualizarTxt('popup-mesa', reserva.idMesa || '');
     actualizarTxt('popup-fecha', reserva.fecha);       
     actualizarTxt('popup-hora', horaFormat);           
     actualizarTxt('popup-zona', reserva.zona);
@@ -1892,115 +1953,135 @@ export class PietraPage implements AfterViewInit, OnDestroy {
   }
 
   actualizarAnalitica(reservasDelDia: any[]) {
-    const reservasFiltradasPorTurno = reservasDelDia.filter(r => {
-      if (this.turnoSeleccionado === 'todo') return true;
-      if (!r.hora) return true;
-      const horaNum = parseInt(r.hora.split(':')[0], 10);
-      if (this.turnoSeleccionado === 'comida') return horaNum >= 13 && horaNum < 18;
-      if (this.turnoSeleccionado === 'cena') return horaNum >= 18 && horaNum <= 23;
-      return true;
-    });
+    try {
+      const reservasFiltradasPorTurno = reservasDelDia.filter(r => {
+        if (this.turnoSeleccionado === 'todo') return true;
+        if (!r.hora) return true;
+        const horaNum = parseInt(r.hora.split(':')[0], 10);
+        if (this.turnoSeleccionado === 'comida') return horaNum >= 13 && horaNum < 18;
+        if (this.turnoSeleccionado === 'cena') return horaNum >= 18 && horaNum <= 23;
+        return true;
+      });
 
-    const efectivas = reservasFiltradasPorTurno.filter(r => r.estado !== 'cancelada' && r.estado !== 'bloqueada');
-    const canceladas = reservasFiltradasPorTurno.filter(r => r.estado === 'cancelada');
+      const efectivas = reservasFiltradasPorTurno.filter(r => r.estado !== 'cancelada' && r.estado !== 'bloqueada');
+      const canceladas = reservasFiltradasPorTurno.filter(r => r.estado === 'cancelada');
 
-    const totalComensalesPax = efectivas.reduce((sum, r) => sum + parseInt(r.personas || 0, 10), 0);
-    const totalMesasOperadas = efectivas.length;
+      const totalComensalesPax = efectivas.reduce((sum, r) => sum + parseInt(r.personas || 0, 10), 0);
+      const totalMesasOperadas = efectivas.length;
 
-    let totalReservasWeb = 0;
-    let totalWalkins = 0;
-    efectivas.forEach(r => {
-      const nombreLower = (r.nombre || '').toLowerCase();
-      if (nombreLower.includes('walk-in') || nombreLower.includes('walkin')) {
-        totalWalkins++;
-      } else {
-        totalReservasWeb++;
-      }
-    });
+      let totalReservasWeb = 0;
+      let totalWalkins = 0;
+      efectivas.forEach(r => {
+        const nombreLower = (r.nombre || '').toLowerCase();
+        if (nombreLower.includes('walk-in') || nombreLower.includes('walkin')) {
+          totalWalkins++;
+        } else {
+          totalReservasWeb++;
+        }
+      });
 
-    const paxPromedio = totalMesasOperadas > 0 ? (totalComensalesPax / totalMesasOperadas).toFixed(1) : '0.0';
+      const paxPromedio = totalMesasOperadas > 0 ? (totalComensalesPax / totalMesasOperadas).toFixed(1) : '0.0';
 
-    const horasConteo: { [key: string]: number } = {};
-    efectivas.forEach(r => {
-      if (r.hora) {
-        const horaCorta = r.hora.substring(0, 2) + ':00';
-        horasConteo[horaCorta] = (horasConteo[horaCorta] || 0) + parseInt(r.personas || 0, 10);
-      }
-    });
+      const horasConteo: { [key: string]: number } = {};
+      efectivas.forEach(r => {
+        if (r.hora) {
+          const horaCorta = r.hora.substring(0, 2) + ':00';
+          horasConteo[horaCorta] = (horasConteo[horaCorta] || 0) + parseInt(r.personas || 0, 10);
+        }
+      });
 
-    let horaPico = '--:--';
-    let maxPaxHora = 0;
-    Object.keys(horasConteo).forEach(h => {
-      if (horasConteo[h] > maxPaxHora) {
-        maxPaxHora = horasConteo[h];
-        horaPico = h;
-      }
-    });
+      let horaPico = '--:--';
+      let maxPaxHora = 0;
+      Object.keys(horasConteo).forEach(h => {
+        if (horasConteo[h] > maxPaxHora) {
+          maxPaxHora = horasConteo[h];
+          horaPico = h;
+        }
+      });
 
-    const zonasConteo: { [key: string]: number } = {
-      'Terraza': 0,
-      'Nivel bajo': 0,
-      'Nivel medio': 0,
-      'Pared lloron': 0
-    };
+      const zonasConteo: { [key: string]: number } = {
+        'Terraza': 0,
+        'Nivel bajo': 0,
+        'Nivel medio': 0,
+        'Pared lloron': 0
+      };
 
-    efectivas.forEach(r => {
-      if (r.zona && zonasConteo[r.zona] !== undefined) {
-        zonasConteo[r.zona] += parseInt(r.personas || 0, 10);
-      }
-    });
+      efectivas.forEach(r => {
+        if (r.zona) {
+          const keyMatch = Object.keys(zonasConteo).find(z => this.limpiarTexto(z) === this.limpiarTexto(r.zona));
+          if (keyMatch) {
+            zonasConteo[keyMatch] += parseInt(r.personas || 0, 10);
+          }
+        }
+      });
 
-    let zonaTop = '--';
-    let maxPaxZona = 0;
-    Object.keys(zonasConteo).forEach(z => {
-      if (zonasConteo[z] > maxPaxZona) {
-        maxPaxZona = zonasConteo[z];
-        zonaTop = z;
-      }
-    });
+      let zonaTop = '--';
+      let maxPaxZona = 0;
+      Object.keys(zonasConteo).forEach(z => {
+        if (zonasConteo[z] > maxPaxZona) {
+          maxPaxZona = zonasConteo[z];
+          zonaTop = z;
+        }
+      });
 
-    const totalIntentos = efectivas.length + canceladas.length;
-    const tasaEfectividadNum = totalIntentos > 0 ? Math.round((efectivas.length / totalIntentos) * 100) : 100;
-    const tasaEfectividadTxt = `${tasaEfectividadNum}%`;
+      const totalIntentos = efectivas.length + canceladas.length;
+      const tasaEfectividadNum = totalIntentos > 0 ? Math.round((efectivas.length / totalIntentos) * 100) : 100;
+      const tasaEfectividadTxt = `${tasaEfectividadNum}%`;
 
-    let totalMesasFisicas = 0;
-    Object.values(this.restaurante).forEach((arr: any) => totalMesasFisicas += (Array.isArray(arr) ? arr.length : 0));
-    const rotacionMesas = totalMesasFisicas > 0 ? (totalMesasOperadas / totalMesasFisicas).toFixed(1) + 'x' : '0.0x';
+      let totalMesasFisicas = 0;
+      Object.values(this.restaurante).forEach((arr: any) => totalMesasFisicas += (Array.isArray(arr) ? arr.length : 0));
+      const rotacionMesas = totalMesasFisicas > 0 ? (totalMesasOperadas / totalMesasFisicas).toFixed(1) + 'x' : '0.0x';
 
-    const el = (id: string, val: string | number) => { 
-      const e = document.getElementById(id); 
-      if (e) e.textContent = val.toString(); 
-    };
+      const el = (id: string, val: string | number) => { 
+        const e = document.getElementById(id); 
+        if (e) e.textContent = val.toString(); 
+      };
 
-    el('kpi-total-pax', totalComensalesPax);
-    el('kpi-mesas-operadas', totalMesasOperadas);
-    el('kpi-ratio-clientes', `${totalReservasWeb} Res / ${totalWalkins} Walk`);
-    el('kpi-avg-pax', `${paxPromedio} pax`);
-    el('kpi-peak-hour', horaPico !== '--:--' ? `${horaPico} (${maxPaxHora}p)` : '--:--');
-    el('kpi-top-zone', zonaTop);
-    el('kpi-tasa-efectividad', tasaEfectividadTxt);
-    el('kpi-rotacion-mesas', rotacionMesas);
+      el('kpi-total-pax', totalComensalesPax);
+      el('kpi-mesas-operadas', totalMesasOperadas);
+      el('kpi-ratio-clientes', `${totalReservasWeb} Res / ${totalWalkins} Walk`);
+      el('kpi-avg-pax', `${paxPromedio} pax`);
+      el('kpi-peak-hour', horaPico !== '--:--' ? `${horaPico} (${maxPaxHora}p)` : '--:--');
+      el('kpi-top-zone', zonaTop);
+      el('kpi-tasa-efectividad', tasaEfectividadTxt);
+      el('kpi-rotacion-mesas', rotacionMesas);
 
-    this.renderizarGraficasAnalitica(efectivas, zonasConteo, totalReservasWeb, totalWalkins);
+      this.renderizarGraficasAnalitica(efectivas, zonasConteo, totalReservasWeb, totalWalkins);
+    } catch (err) {
+      console.warn('Error no bloqueante en calculo de analitica Pietra:', err);
+    }
   }
 
   async renderizarGraficasAnalitica(efectivas: any[], datosZonas: any, reservasWeb: number, walkins: number) {
-    await this.cargarChartJS();
-    if (!(window as any).Chart) return;
+    try {
+      const vistaAnalitica = document.getElementById('vista-analitica');
+      if (vistaAnalitica && vistaAnalitica.classList.contains('oculto')) {
+        return;
+      }
 
-    this.dibujarGraficaHorarios(efectivas);
-    this.dibujarGraficaZonas(datosZonas);
-    this.dibujarGraficaOrigen(reservasWeb, walkins);
+      await this.cargarChartJS();
+      if (!(window as any).Chart) return;
+
+      this.dibujarGraficaHorarios(efectivas);
+      this.dibujarGraficaZonas(datosZonas);
+      this.dibujarGraficaOrigen(reservasWeb, walkins);
+    } catch (e) {
+      console.warn('Error al renderizar graficas Pietra:', e);
+    }
   }
 
   dibujarGraficaHorarios(efectivas: any[]) {
     const canvas = document.getElementById('grafica-horarios') as HTMLCanvasElement;
     if (!canvas) return;
 
-    if (this.chartInstanceHorarios) {
-      this.chartInstanceHorarios.destroy();
-      this.chartInstanceHorarios = null;
-    }
+    try {
+      const chartExistente = Chart.getChart(canvas);
+      if (chartExistente) chartExistente.destroy();
+      if (this.chartInstanceHorarios) {
+        this.chartInstanceHorarios.destroy();
+        this.chartInstanceHorarios = null;
+      }
+    } catch (e) {}
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -2015,41 +2096,47 @@ export class PietraPage implements AfterViewInit, OnDestroy {
       }, 0);
     });
 
-    this.chartInstanceHorarios = new Chart(canvas, {
-      type: 'bar',
-      data: {
-        labels: horasRango,
-        datasets: [{
-          label: 'Comensales (PAX)',
-          data: comensalesPorHora,
-          backgroundColor: 'rgba(212, 175, 55, 0.75)',
-          borderColor: '#d4af37',
-          borderWidth: 2,
-          borderRadius: 6
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
+    try {
+      this.chartInstanceHorarios = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: horasRango,
+          datasets: [{
+            label: 'Comensales (PAX)',
+            data: comensalesPorHora,
+            backgroundColor: 'rgba(212, 175, 55, 0.75)',
+            borderColor: '#d4af37',
+            borderWidth: 2,
+            borderRadius: 6
+          }]
         },
-        scales: {
-          y: { beginAtZero: true, ticks: { stepSize: 2 } },
-          x: { grid: { display: false } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 2 } },
+            x: { grid: { display: false } }
+          }
         }
-      }
-    });
+      });
+    } catch (e) {}
   }
 
   dibujarGraficaZonas(datosZonas: any) {
     const canvas = document.getElementById('grafica-zonas') as HTMLCanvasElement;
     if (!canvas) return;
 
-    if (this.chartInstanceZonas) {
-      this.chartInstanceZonas.destroy();
-      this.chartInstanceZonas = null;
-    }
+    try {
+      const chartExistente = Chart.getChart(canvas);
+      if (chartExistente) chartExistente.destroy();
+      if (this.chartInstanceZonas) {
+        this.chartInstanceZonas.destroy();
+        this.chartInstanceZonas = null;
+      }
+    } catch (e) {}
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -2058,68 +2145,76 @@ export class PietraPage implements AfterViewInit, OnDestroy {
     const data = Object.values(datosZonas);
     const colors = ['#d4af37', '#2c3e50', '#e67e22', '#8e44ad'];
 
-    this.chartInstanceZonas = new Chart(canvas, {
-      type: this.tipoGraficaZonas === 'pie' ? 'doughnut' : 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Comensales por Zona',
-          data: data,
-          backgroundColor: colors,
-          borderColor: '#ffffff',
-          borderWidth: 2,
-          borderRadius: this.tipoGraficaZonas === 'bar' ? 6 : 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { font: { family: 'Segoe UI', size: 11, weight: 'bold' }, color: '#2c3e50', padding: 10 }
-          }
+    try {
+      this.chartInstanceZonas = new Chart(canvas, {
+        type: this.tipoGraficaZonas === 'pie' ? 'doughnut' : 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Comensales por Zona',
+            data: data,
+            backgroundColor: colors,
+            borderColor: '#ffffff',
+            borderWidth: 2,
+            borderRadius: this.tipoGraficaZonas === 'bar' ? 6 : 0
+          }]
         },
-        scales: this.tipoGraficaZonas === 'bar' ? {
-          y: { beginAtZero: true, ticks: { stepSize: 2 } }
-        } : {}
-      }
-    });
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { font: { family: 'Segoe UI', size: 11, weight: 'bold' }, color: '#2c3e50', padding: 10 }
+            }
+          },
+          scales: this.tipoGraficaZonas === 'bar' ? {
+            y: { beginAtZero: true, ticks: { stepSize: 2 } }
+          } : {}
+        }
+      });
+    } catch (e) {}
   }
 
   dibujarGraficaOrigen(reservasWeb: number, walkins: number) {
     const canvas = document.getElementById('grafica-origen') as HTMLCanvasElement;
     if (!canvas) return;
 
-    if (this.chartInstanceOrigen) {
-      this.chartInstanceOrigen.destroy();
-      this.chartInstanceOrigen = null;
-    }
+    try {
+      const chartExistente = Chart.getChart(canvas);
+      if (chartExistente) chartExistente.destroy();
+      if (this.chartInstanceOrigen) {
+        this.chartInstanceOrigen.destroy();
+        this.chartInstanceOrigen = null;
+      }
+    } catch (e) {}
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    this.chartInstanceOrigen = new Chart(canvas, {
-      type: 'doughnut',
-      data: {
-        labels: ['Reservas Web', 'Walk-ins (Puerta)'],
-        datasets: [{
-          data: [reservasWeb, walkins],
-          backgroundColor: ['#d4af37', '#2c3e50'],
-          borderColor: '#ffffff',
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: { font: { family: 'Segoe UI', size: 11, weight: 'bold' }, color: '#2c3e50', padding: 10 }
+    try {
+      this.chartInstanceOrigen = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: ['Reservas Web', 'Walk-ins (Puerta)'],
+          datasets: [{
+            data: [reservasWeb, walkins],
+            backgroundColor: ['#d4af37', '#2c3e50'],
+            borderColor: '#ffffff',
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: { font: { family: 'Segoe UI', size: 11, weight: 'bold' }, color: '#2c3e50', padding: 10 }
+            }
           }
         }
-      }
-    });
+      });
+    } catch (e) {}
   }
 }
