@@ -292,15 +292,24 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   destruirGraficas() {
     try {
       const c1 = document.getElementById('grafica-zonas') as HTMLCanvasElement;
-      if (c1) Chart.getChart(c1)?.destroy();
+      if (c1) {
+        const ch1 = Chart.getChart(c1);
+        if (ch1) ch1.destroy();
+      }
       if (this.chartInstanceZonas) { this.chartInstanceZonas.destroy(); this.chartInstanceZonas = null; }
 
       const c2 = document.getElementById('grafica-horarios') as HTMLCanvasElement;
-      if (c2) Chart.getChart(c2)?.destroy();
+      if (c2) {
+        const ch2 = Chart.getChart(c2);
+        if (ch2) ch2.destroy();
+      }
       if (this.chartInstanceHorarios) { this.chartInstanceHorarios.destroy(); this.chartInstanceHorarios = null; }
 
       const c3 = document.getElementById('grafica-origen') as HTMLCanvasElement;
-      if (c3) Chart.getChart(c3)?.destroy();
+      if (c3) {
+        const ch3 = Chart.getChart(c3);
+        if (ch3) ch3.destroy();
+      }
       if (this.chartInstanceOrigen) { this.chartInstanceOrigen.destroy(); this.chartInstanceOrigen = null; }
     } catch (e) {}
   }
@@ -2041,7 +2050,8 @@ export class LloronaPage implements AfterViewInit, OnDestroy {
   async renderizarGraficasAnalitica(efectivas: any[], datosZonas: any, reservasWeb: number, walkins: number) {
     try {
       const vistaAnalitica = document.getElementById('vista-analitica');
-      if (vistaAnalitica && vistaAnalitica.classList.contains('oculto')) {
+      // No tocar los lienzos ni dibujar graficas si la pestana analitica esta oculta
+      if (!vistaAnalitica || vistaAnalitica.classList.contains('oculto')) {
         return;
       }
 
